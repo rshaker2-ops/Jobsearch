@@ -186,6 +186,35 @@ class BandsTestCase(unittest.TestCase):
 
 
 class YearsTestCase(unittest.TestCase):
+    """
+    A stated range means its LOW end is the floor. Reading the high end
+    overstates the requirement, and that only changes a verdict when the
+    candidate sits between the two, which is where these candidates live.
+
+    Measured against the descriptions already fetched, the old regex
+    overstated 47 floors and flipped 14 verdicts:
+
+        bob     41 roles read,  3 overstated,  0 flipped (25 years clears all)
+        edan   110 roles read,  7 overstated,  3 flipped
+        robbie  33 roles read,  9 overstated,  2 flipped
+        jeff   131 roles read, 28 overstated,  9 flipped
+
+    The cases below are the real strings behind those flips.
+    """
+
+    def test_a_range_floor_is_its_low_end(self):
+        for text, expected, who in [
+            # Rapid7, Sonos, OPSWAT. Edan has 4, so a 5 excluded him and a 3 does not.
+            ("Bring 3-5+ years of dedicated experience in vulnerability management", 3, "edan"),
+            # InComm Vendor Risk Analyst I. Robbie has 1.
+            ("Minimum 3 years in financial services, with 1-2 years specifically in risk", 1, "robbie"),
+            # Drata and the enablement postings. Jeff has 5.
+            ("5 to 8 years in enablement, including building or rebuilding a program", 5, "jeff"),
+            ("2 to 4 years of experience in customer success", 2, "jeff"),
+        ]:
+            found = [int(x) for x in run.YEARS.findall(text) if int(x) <= 25]
+            self.assertEqual(min(found), expected, f"{who}: {text}")
+
     def test_reads_the_stated_floor(self):
         for text, expected in [
             ("5+ years of product management experience", "5"),
