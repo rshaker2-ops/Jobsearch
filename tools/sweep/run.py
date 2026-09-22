@@ -26,7 +26,40 @@ import wd_sweep
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROFILES = json.load(open(os.path.join(HERE, "profiles.json")))
 
-REMOTE = re.compile(r"\bremote\b|united states|\busa\b|anywhere", re.I)
+# A location counts as United States if it names the country, a state, or says
+# nationwide. Written against the strings the two channels actually produce:
+# LinkedIn gives "Austin, TX" far more often than "Austin, Texas, United
+# States", and Workday gives "Remote Kentucky", "USA - Remote - Missouri" and
+# "United States of America : Remote" alongside "United Kingdom - Remote".
+STATES = (
+    "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|"
+    "florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|"
+    "louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|"
+    "missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|"
+    "new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|"
+    "rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|"
+    "virginia|washington|west virginia|wisconsin|wyoming"
+)
+US_SIGNAL = re.compile(
+    r"united states|\bu\.?s\.?a\.?\b|\bnationwide\b|\b(" + STATES + r")\b"
+    r"|,\s*(A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOT]|"
+    r"N[EVHJMYCD]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[TA]|W[AVIY])\s*$",
+    re.I,
+)
+# Only consulted when there is no US signal, so "Washington" or "Georgia" as a
+# US state still wins over the country of the same name.
+NON_US = re.compile(
+    r"united kingdom|\bu\.?k\.?\b|canada|mexico|australia|philippines|india|"
+    r"saudi|ireland|germany|france|spain|netherlands|poland|singapore|japan|"
+    r"china|brazil|argentina|colombia|south africa|israel|sweden|norway|"
+    r"denmark|finland|switzerland|austria|belgium|portugal|italy|romania|"
+    r"czech|hungary|greece|turkey|egypt|kenya|nigeria|pakistan|bangladesh|"
+    r"vietnam|thailand|malaysia|indonesia|korea|taiwan|hong kong|new zealand|"
+    r"costa rica|chile|peru|uruguay|emirates|qatar|kuwait|bahrain|jordan|"
+    r"lithuania|latvia|estonia|bulgaria|croatia|serbia|ukraine|slovakia",
+    re.I,
+)
+REMOTEISH = re.compile(r"\bremote\b|\banywhere\b|work from home", re.I)
 MA     = re.compile(r"\b(boston|cambridge|massachusetts|\bma\b|waltham|burlington|somerville|"
                     r"newton|quincy|providence|rhode island|\bri\b|medford|lexington|needham)\b", re.I)
 SENIOR    = re.compile(r"\b(senior|sr\.?|lead|ii|iii|iv|principal|staff)\b", re.I)
@@ -45,13 +78,30 @@ def bands(text):
     return sorted(set(out))
 
 
-def loc_ok(loc, p, ats):
-    # Any US location is kept, remote or on-site. Bob's call, 22 Sep: he wants
-    # to see on-site and hybrid US roles rather than have them filtered out.
+def loc_ok(loc, p, ats, remote_confirmed=False):
     loc = (loc or "").strip()
+
+    # remote-only means exactly that. Jeff is in Humboldt County, which has no
+    # technology employment market at this level, so an on-site role is not a
+    # longer commute, it is impossible. Keeping them would fill his list with
+    # roles he can never take.
+    if "remote-only" in p["locations"]:
+        if NON_US.search(loc) and not US_SIGNAL.search(loc):
+            return False
+        if remote_confirmed:
+            # The search itself was filtered to remote, so the city in the
+            # location string is the employer's address, not a commute.
+            return bool(US_SIGNAL.search(loc)) or not loc
+        return bool(REMOTEISH.search(loc))
+
+    # Everyone else keeps any US location, remote or on-site. Bob's call, 22 Sep.
+    if US_SIGNAL.search(loc):
+        return True
+    if NON_US.search(loc):
+        return False
     if "ma-ri" in p["locations"] and MA.search(loc):
         return True
-    return bool(REMOTE.search(loc))
+    return bool(REMOTEISH.search(loc))
 
 
 def sweep(key, outdir):
@@ -64,9 +114,15 @@ def sweep(key, outdir):
                                 if "ma-ri" in p["locations"] else [])
     for q in p["linkedin_queries"]:
         for loc in locs:
-            r = search(q, loc, tpr="r2592000", remote=(loc == "United States"), pages=4)
+            is_remote_search = loc == "United States"
+            r = search(q, loc, tpr="r2592000", remote=is_remote_search, pages=4)
             for x in r:
                 x["ats"] = "linkedin"
+                # LinkedIn carries remoteness in the f_WT search flag, not in the
+                # location string: a remote role still reads "Austin, TX". Without
+                # recording the flag, a remote-only profile throws away everything
+                # LinkedIn already confirmed was remote.
+                x["remote_confirmed"] = is_remote_search
             rows += r
             print(f"  li [{q[:38]:38s}] {loc[:22]:22s} -> {len(r):3d}", file=sys.stderr, flush=True)
 
@@ -81,10 +137,18 @@ def sweep(key, outdir):
                 print(f"  wd {t[0]}/{q}: {e}", file=sys.stderr)
     stats["raw"] = len(rows)
 
-    seen = {}
+    # Two passes. The URL catches the same posting returned by several queries;
+    # company plus title catches an employer listing one job twice under
+    # different req ids, which LinkedIn does often enough to matter.
+    by_url = {}
     for r in rows:
-        seen.setdefault(r.get("url") or (r["company"], r["title"]), r)
-    rows = list(seen.values())
+        by_url.setdefault(r.get("url") or (r["company"], r["title"]), r)
+    by_job = {}
+    for r in by_url.values():
+        by_job.setdefault(
+            ((r.get("company") or "").lower().strip(), r["title"].lower().strip()), r
+        )
+    rows = list(by_job.values())
     stats["unique"] = len(rows)
 
     # ---- title filter -----------------------------------------------------
@@ -96,7 +160,10 @@ def sweep(key, outdir):
     stats["after_title"] = len(rows)
 
     # ---- location and seniority ------------------------------------------
-    rows = [r for r in rows if loc_ok(r.get("loc"), p, r.get("ats"))]
+    rows = [
+        r for r in rows
+        if loc_ok(r.get("loc"), p, r.get("ats"), r.get("remote_confirmed", False))
+    ]
     if p.get("drop_seniority"):
         rows = [r for r in rows if not SENIOR.search(r["title"])]
     stats["after_location"] = len(rows)

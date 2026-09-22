@@ -5,15 +5,16 @@ of the last run. Everything needed is in this repo.
 
 ## What it produces
 
-Three Word documents, one per candidate, emailed to all three recipients.
+Four Word documents, one per candidate, emailed to all four recipients.
 
-| Candidate | Folder | Email |
-|---|---|---|
-| Robert J. Shaker II (Bob) | `Bob/` | rshaker2@gmail.com |
-| Edan Mejias | `Edan/` | edanmejias@gmail.com |
-| Robert J. Shaker (Robbie) | `Robbie/` | robertshaker3@gmail.com |
+| Candidate | Folder | Email | Lane |
+|---|---|---|---|
+| Robert J. Shaker II (Bob) | `Bob/` | rshaker2@gmail.com | SVP+ product and engineering |
+| Edan Mejias | `Edan/` | edanmejias@gmail.com | Senior / technical PM and PMM |
+| Robert J. Shaker (Robbie) | `Robbie/` | robertshaker3@gmail.com | Information security and GRC analyst |
+| Jeffrey G. Walton (Jeff) | `Jeff/` | jgordonwalton@gmail.com | Customer success, onboarding, enablement |
 
-**All three people receive all three documents.** Bob chose this deliberately
+**Everyone receives every document.** Bob chose this deliberately
 on 22 Sep 2026, knowing the analysis is frank and discusses each candidate's
 gaps. Do not soften a finding because its subject is on the To: line. The
 candor is the product. If a role is a bad fit, say so and quote the line that
@@ -25,6 +26,7 @@ makes it one.
 python3 tools/sweep/run.py bob    /tmp/sweep
 python3 tools/sweep/run.py edan   /tmp/sweep
 python3 tools/sweep/run.py robbie /tmp/sweep
+python3 tools/sweep/run.py jeff   /tmp/sweep
 ```
 
 Roughly 8 to 12 minutes each; LinkedIn is rate limited and the script sleeps
@@ -39,11 +41,24 @@ stated anywhere in the posting.
 Criteria live in `tools/sweep/profiles.json`. Change a floor or a search term
 there, never in the scripts.
 
-**Location rule, as of 22 Sep:** any United States location is kept, remote or
-on-site. Bob widened this deliberately, so on-site and hybrid roles now appear
-in all three lists. Say where a role actually sits in the write-up rather than
-assuming remote. Boston and Rhode Island are still prioritised for Edan and
-Robbie, they are just no longer the only non-remote option.
+**Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
+location, remote or on-site, so say where a role actually sits rather than
+assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
+
+Jeff is `remote-only` and that is a hard constraint, not a preference. He is in
+McKinleyville, Humboldt County, which has no technology employment market at
+this level, so an on-site role is not a longer commute, it is impossible.
+Anything hybrid is a rule-out for him rather than a maybe, and his `hard_gate`
+pattern flags the postings that say so.
+
+Two traps the location code exists to avoid, both found in real data:
+
+- LinkedIn writes most US roles as `Austin, TX`, not `Austin, Texas, United
+  States`. Matching only the spelled-out country silently dropped 235 of 303
+  US-located roles out of one sweep.
+- LinkedIn carries remoteness in the `f_WT` search flag, not in the location
+  string, so a fully remote role still reads `Austin, TX`. A remote-only
+  profile that filters on the string alone throws away almost everything.
 
 ## Step 2: read the requirements
 
@@ -56,12 +71,25 @@ For every role in the top ~15 of each list, read `desc` and decide:
 - **Out** if it requires a named language at expert level, hands-on coding,
   distributed systems or architecture design, or SRE practice (Bob); if the
   stated experience floor is more than one year above the candidate (Edan,
-  Robbie); if it requires a clearance, a certification they do not hold as a
-  hard requirement, or engineering and development work (Robbie, always).
+  Robbie, Jeff); if it requires a clearance, a certification they do not hold
+  as a hard requirement, or engineering and development work (Robbie, always);
+  if it is hybrid or on-site in any form (Jeff, always).
 - **In** if it requires org design, roadmap ownership, product strategy, P&L,
   hiring and developing people (Bob); platform, API, identity or security
   product ownership (Edan); vendor risk, third-party risk, questionnaires,
-  SOC 2, ISO 27001, NIST, audit or policy work (Robbie).
+  SOC 2, ISO 27001, NIST, audit or policy work (Robbie); building a customer
+  education, onboarding or enablement program from a blank page, MSP and
+  channel motions, or a dual-track enterprise plus SMB model (Jeff).
+
+Jeff's distinctive credential is worth stating plainly, because most of the
+market will misread him as a generic customer success manager. He was on the
+founding team of Malwarebytes Managed Security Services and built its global
+onboarding from nothing, reaching 90% retention and 88% enablement. Postings
+that ask for someone to build or significantly rebuild a program, rather than
+run one that already exists, are the ones where that is rare rather than
+ordinary. His security tenure is about five years, not the fifteen an older
+version of his resume claimed, so treat a 5+ year bar as cleared and anything
+above 8 as out.
 
 Why this matters: on 19 Sep a Five9 engineering role was ranked first for Bob
 on the strength of its title and its band. Reading the requirements would have
@@ -104,7 +132,7 @@ What this step owes it is a queued email:
    CSS and no external images. Three or four short paragraphs, one per person,
    naming the single highest-value move for them this week and why. Not a
    summary of the documents. The documents are the summary.
-2. Copy the three .docx into `outbox/<YYYY-MM-DD>.files/`, named so a stranger
+2. Copy all four .docx into `outbox/<YYYY-MM-DD>.files/`, named so a stranger
    can tell them apart in an inbox, for example
    `Bob_Shaker_Role_Sweep_25Sep.docx`. Everything in that directory gets
    attached.
@@ -114,7 +142,7 @@ What this step owes it is a queued email:
    The .docx still go through the PR for review; the queued copies are
    delivery artifacts.
 4. Verify with `python3 tools/mail/send.py --dry-run`. It must exit 0, name
-   the HTML file, and list three attachments. Exit 2 means the date or the
+   the HTML file, and list four attachments. Exit 2 means the date or the
    filename is wrong. Fix it before finishing.
 
 ## When a run finds nothing new
