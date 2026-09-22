@@ -97,5 +97,38 @@
     "hard_gate": "\\b(cissp required|active (secret|ts/sci|top secret)|polygraph|clearance required|must (hold|possess) (an? )?(active )?(security )?clearance|proficient in at least one scripting language|scripting language \\(python)\\b",
     "fit_signal": "\\b(vendor risk|third[- ]party|questionnaire|soc 2|iso 27001|nist|grc|audit|policy|control|compliance)\\b",
     "drop_seniority": true
+  },
+  "jeff": {
+    "name": "Jeffrey G. Walton",
+    "folder": "Jeff",
+    "email": "jgordonwalton@gmail.com",
+    "headline": "Customer success, onboarding and enablement  \u00b7  remote only, Pacific Time  \u00b7  $120k floor",
+    "floor": 120000,
+    "years_experience": 5,
+    "locations": [
+      "remote-only"
+    ],
+    "location_note": "Remote is a hard requirement, not a preference. He is in McKinleyville, Humboldt County, which has no technology employment market at this level. Anything hybrid is a rule-out, not a maybe.",
+    "linkedin_queries": [
+      "Customer Success Manager cybersecurity",
+      "Customer Education Manager",
+      "Enablement Program Manager",
+      "Customer Onboarding Manager SaaS",
+      "Customer Success Manager MSP",
+      "Learning and Development Manager security"
+    ],
+    "workday_queries": [
+      "Customer Success Manager",
+      "Customer Education",
+      "Enablement Manager",
+      "Onboarding Manager",
+      "Customer Experience Manager"
+    ],
+    "title_keep": "\\b(customer success|customer education|customer experience|customer onboarding|onboarding manager|enablement|learning (and|&) development|customer enablement|client experience|technical account manager|customer training)\\b",
+    "title_scope": "",
+    "title_drop": "\\b(intern|junior|associate|vp|vice president|head of|chief|director of sales|account executive|sales development|sdr|bdr|engineer|developer|architect|recruit|part[- ]time|contract|unpaid|co-?founder)\\b",
+    "hard_gate": "\\b(hybrid|days? (a|per) week in (the )?office|on[- ]?site required|must (be able to )?(work|report) (on[- ]?site|in[- ]?office)|relocat)\\b",
+    "fit_signal": "\\b(security|cyber|mdr|managed detection|msp|channel|partner|onboarding|enablement|curriculum|retention|adoption|saas|time to value|academy)\\b",
+    "drop_seniority": false
   }
 }
