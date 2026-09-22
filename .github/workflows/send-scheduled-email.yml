@@ -1,0 +1,56 @@
+name: Send scheduled email
+
+# Monday and Thursday at 13:00 UTC. That is 9am Eastern while daylight saving
+# is in effect and 8am Eastern once it ends, because GitHub cron is always UTC
+# and does not follow local clock changes.
+on:
+  schedule:
+    - cron: "0 13 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Check everything but do not send, move or commit"
+        type: boolean
+        default: false
+      date:
+        description: "Override the date to send, as YYYY-MM-DD. Leave blank for today."
+        type: string
+        default: ""
+
+# Needed so the job can commit the outbox to sent move and push it back.
+permissions:
+  contents: write
+
+concurrency:
+  group: send-scheduled-email
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          # Keep the token on disk so the push at the end of send.py works.
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Send
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ inputs.date }}" ]; then
+            ARGS="$ARGS --date ${{ inputs.date }}"
+          fi
+          python3 tools/mail/send.py $ARGS

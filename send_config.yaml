@@ -1,0 +1,21 @@
+# Scheduled email sender configuration.
+#
+# Parsed by tools/mail/send.py with a small built-in reader, not PyYAML, because
+# the sender is restricted to the Python standard library and there is no YAML
+# parser in it. Only the subset used below is supported: "key: value" pairs and
+# "- item" lists. Keep it flat.
+
+# The From: address. Usually the same as the GMAIL_USER secret. If Gmail is
+# configured to send as an alias, this may differ, and Gmail will rewrite it if
+# the alias is not verified.
+sender: rshaker2@gmail.com
+
+# Everyone on this list receives every send, on the To: line.
+recipients:
+  - rshaker2@gmail.com
+  - edanmejias@gmail.com
+  - robertshaker3@gmail.com
+
+# Subject line. {date} is replaced with the send date as YYYY-MM-DD, and
+# {date_long} with a readable form such as "22 September 2026".
+subject: "Role sweep, {date_long}"
