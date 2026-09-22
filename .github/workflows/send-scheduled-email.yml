@@ -8,6 +8,10 @@ on:
     - cron: "0 13 * * 1,4"
   workflow_dispatch:
     inputs:
+      check_auth:
+        description: "Only test the Gmail credentials. Sends nothing, needs nothing queued."
+        type: boolean
+        default: false
       dry_run:
         description: "Check everything but do not send, move or commit"
         type: boolean
@@ -47,6 +51,10 @@ jobs:
         run: |
           set -euo pipefail
           ARGS=""
+          if [ "${{ inputs.check_auth }}" = "true" ]; then
+            python3 tools/mail/send.py --check-auth
+            exit $?
+          fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi

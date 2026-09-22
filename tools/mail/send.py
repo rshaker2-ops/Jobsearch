@@ -3,6 +3,7 @@
 Send today's queued HTML email, then file it away.
 
     python3 tools/mail/send.py [--dry-run] [--date YYYY-MM-DD] [--config PATH]
+    python3 tools/mail/send.py --check-auth
 
 Looks for outbox/<today>.html, where today is the current date in
 America/New_York rather than UTC, so a run scheduled near midnight UTC still
@@ -16,8 +17,12 @@ Credentials come from the environment, never from the config file or the repo:
     GMAIL_USER          the full Gmail address to authenticate as
     GMAIL_APP_PASSWORD  a Google app password, not the account password
 
+--check-auth logs in to Gmail and disconnects without sending anything and
+without needing a queued file. It is the only way to prove the credentials
+work before a real send, because --dry-run returns before it reads them.
+
 Exit codes:
-    0  sent (or dry run completed)
+    0  sent (or dry run / auth check completed)
     1  configuration or credential problem
     2  no file queued for today
     3  already sent (a file of that name exists in sent/)
@@ -177,6 +182,57 @@ def html_to_text(html):
     return text.strip()
 
 
+def credentials():
+    """The two secrets, or a message naming whichever is missing."""
+    user = os.environ.get("GMAIL_USER")
+    password = os.environ.get("GMAIL_APP_PASSWORD")
+    missing = [
+        name
+        for name, value in (("GMAIL_USER", user), ("GMAIL_APP_PASSWORD", password))
+        if not value
+    ]
+    if missing:
+        return None, None, (
+            f"missing environment variable(s): {', '.join(missing)}.\n"
+            f"       Set them as repository secrets, or export them locally."
+        )
+    return user, password, None
+
+
+def check_auth():
+    """
+    Log in and hang up. Nothing is sent, nothing is read from the outbox, and
+    no file has to be queued. This exists because --dry-run returns before it
+    ever looks at the credentials, so it cannot tell you whether they work.
+    """
+    user, password, problem = credentials()
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
+        return 1
+    print(f"host      {SMTP_HOST}:{SMTP_PORT}")
+    print(f"user      {user}")
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=60) as smtp:
+            smtp.login(user, password)
+    except smtplib.SMTPAuthenticationError as exc:
+        print(
+            f"error: Gmail rejected the login ({exc.smtp_code}).\n"
+            f"       GMAIL_APP_PASSWORD must be a Google app password, 16\n"
+            f"       characters, not the account password, and 2-Step\n"
+            f"       Verification must be on for {user}.\n"
+            f"       If this is a Workspace account, an administrator may have\n"
+            f"       disabled app passwords entirely.",
+            file=sys.stderr,
+        )
+        return 1
+    except Exception as exc:
+        print(f"error: could not reach {SMTP_HOST}: {exc}", file=sys.stderr)
+        return 1
+    print("\nauthenticated. The credentials work. Nothing was sent.")
+    return 0
+
+
 # --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
@@ -189,6 +245,12 @@ def main():
         help="do everything except send, move, commit and push",
     )
     parser.add_argument(
+        "--check-auth",
+        action="store_true",
+        help="log in to Gmail and disconnect, sending nothing. Proves the "
+             "credentials work without needing anything queued.",
+    )
+    parser.add_argument(
         "--date",
         help="override the date to send, as YYYY-MM-DD (for testing)",
     )
@@ -198,6 +260,9 @@ def main():
         help="path to send_config.yaml",
     )
     args = parser.parse_args()
+
+    if args.check_auth:
+        return check_auth()
 
     config_path = Path(args.config)
     if not config_path.is_file():
@@ -311,19 +376,9 @@ def main():
         print("\ndry run: not sending, not moving, not committing.")
         return 0
 
-    user = os.environ.get("GMAIL_USER")
-    password = os.environ.get("GMAIL_APP_PASSWORD")
-    if not user or not password:
-        missing = [
-            name
-            for name, value in (("GMAIL_USER", user), ("GMAIL_APP_PASSWORD", password))
-            if not value
-        ]
-        print(
-            f"error: missing environment variable(s): {', '.join(missing)}.\n"
-            f"       Set them as repository secrets, or export them locally.",
-            file=sys.stderr,
-        )
+    user, password, problem = credentials()
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
         return 1
 
     try:

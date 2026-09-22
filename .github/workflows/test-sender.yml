@@ -1,0 +1,73 @@
+name: Test sender
+
+# The sender only runs on a schedule, so without this a change that breaks it
+# merges green and the failure surfaces as an email that never arrives.
+on:
+  pull_request:
+    paths:
+      - "tools/mail/**"
+      - "send_config.yaml"
+      - ".github/workflows/test-sender.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tools/mail/**"
+      - "send_config.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: python3 tools/mail/test_send.py
+
+      - name: Config parses and every recipient looks like an address
+        run: |
+          python3 - <<'EOF'
+          import re, sys
+          sys.path.insert(0, "tools/mail")
+          from pathlib import Path
+          from send import read_config
+          cfg = read_config(Path("send_config.yaml"))
+          assert cfg.get("sender"), "send_config.yaml has no sender"
+          assert cfg.get("recipients"), "send_config.yaml has no recipients"
+          pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+          for address in [cfg["sender"], *cfg["recipients"]]:
+              assert pattern.match(address), f"not an email address: {address!r}"
+          assert "{date" in cfg.get("subject", ""), "subject has no {date} placeholder"
+          print(f"ok: {len(cfg['recipients'])} recipients, from {cfg['sender']}")
+          EOF
+
+      - name: No em dashes anywhere in the repository
+        run: |
+          python3 - <<'EOF'
+          import subprocess, sys
+          files = subprocess.run(
+              ["git", "ls-files"], capture_output=True, text=True
+          ).stdout.split()
+          skip = (".docx", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".zip")
+          bad = []
+          for name in files:
+              if name.endswith(skip):
+                  continue
+              try:
+                  body = open(name, encoding="utf-8").read()
+              except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError):
+                  continue
+              if "—" in body:
+                  bad.append(f"{name} ({body.count(chr(8212))})")
+          if bad:
+              print("em dashes found in:", *bad, sep="\n  ")
+              sys.exit(1)
+          print("ok: no em dashes")
+          EOF

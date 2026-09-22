@@ -116,6 +116,19 @@ and needs no credentials:
 python3 tools/mail/send.py --dry-run
 ```
 
+A dry run deliberately returns before it reads the credentials, so it proves
+the file and the config are right but says nothing about whether the secrets
+work. To test those, log in and hang up without sending:
+
+```bash
+python3 tools/mail/send.py --check-auth
+```
+
+That needs nothing queued. From the Actions tab the same check is the
+**check_auth** input on **Send scheduled email**, which is the right first
+press after adding the secrets: it proves the credentials before any mail can
+go out.
+
 Then run it for real from the Actions tab: open **Send scheduled email**, press
 **Run workflow**, and leave both inputs blank to send today's file. Tick
 **dry_run** instead to have the workflow check everything without sending, which
@@ -130,11 +143,28 @@ After a successful send the workflow commits the move as `Sent YYYY-MM-DD` and
 pushes, so `git pull` will show the file has left `outbox/` and arrived in
 `sent/`.
 
+### Tests
+
+```bash
+python3 tools/mail/test_send.py
+```
+
+Twenty tests, standard library only, no network. They cover the message
+structure, attachment integrity (payloads are hashed against the originals and
+reopened as zips to prove Word will still accept them), ordering, the size cap,
+every refusal path, and the config parser.
+
+`.github/workflows/test-sender.yml` runs them on any pull request touching
+`tools/mail/` or `send_config.yaml`, checks every address in the config looks
+like an address, and fails the build on an em dash anywhere in the repository.
+The sender itself only executes on a schedule, so without this a change that
+breaks it would merge green and surface as an email that never arrived.
+
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| 0 | sent, or the dry run finished |
+| 0 | sent, or the dry run or auth check finished |
 | 1 | configuration or credentials problem |
 | 2 | nothing queued for that date |
 | 3 | already sent, a file of that name is in `sent/` |
