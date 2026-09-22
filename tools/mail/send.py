@@ -4,6 +4,7 @@ Send today's queued HTML email, then file it away.
 
     python3 tools/mail/send.py [--dry-run] [--date YYYY-MM-DD] [--config PATH]
     python3 tools/mail/send.py --check-auth
+    python3 tools/mail/send.py --to you@example.com
 
 Looks for outbox/<today>.html, where today is the current date in
 America/New_York rather than UTC, so a run scheduled near midnight UTC still
@@ -16,6 +17,9 @@ Credentials come from the environment, never from the config file or the repo:
 
     GMAIL_USER          the full Gmail address to authenticate as
     GMAIL_APP_PASSWORD  a Google app password, not the account password
+
+--to replaces the recipient list for one run, so a real send can be tested
+against a single inbox without mailing everybody on the list.
 
 --check-auth logs in to Gmail and disconnects without sending anything and
 without needing a queued file. It is the only way to prove the credentials
@@ -255,6 +259,13 @@ def main():
         help="override the date to send, as YYYY-MM-DD (for testing)",
     )
     parser.add_argument(
+        "--to",
+        action="append",
+        metavar="ADDRESS",
+        help="send to this address instead of the configured recipients. "
+             "Repeatable. Use it to test a real send against one inbox.",
+    )
+    parser.add_argument(
         "--config",
         default=str(REPO / "send_config.yaml"),
         help="path to send_config.yaml",
@@ -274,12 +285,14 @@ def main():
         print(f"error: {config_path} is malformed: {exc}", file=sys.stderr)
         return 1
 
-    recipients = cfg.get("recipients") or []
+    recipients = args.to or cfg.get("recipients") or []
     sender = cfg.get("sender")
     subject_template = cfg.get("subject", "Update, {date}")
     if not recipients:
         print(f"error: no recipients listed in {config_path}", file=sys.stderr)
         return 1
+    if args.to:
+        print(f"note      overriding the configured recipients with --to")
     if not sender:
         print(f"error: no sender address in {config_path}", file=sys.stderr)
         return 1
