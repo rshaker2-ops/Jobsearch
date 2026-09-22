@@ -1,18 +1,15 @@
-name: Test sender
+name: Tests
 
-# The sender only runs on a schedule, so without this a change that breaks it
-# merges green and the failure surfaces as an email that never arrives.
+# Runs on every pull request, with no paths filter. There used to be one,
+# scoped to tools/mail, which meant a change to the sweep pipeline or the
+# document builder merged with no checks at all. The seventeen em dashes that
+# were rendering into the .docx being emailed to people lived in
+# tools/build/_example_doc.js, which the filter did not cover. The job takes
+# under ten seconds, so filtering bought nothing and hid things.
 on:
   pull_request:
-    paths:
-      - "tools/mail/**"
-      - "send_config.yaml"
-      - ".github/workflows/test-sender.yml"
   push:
     branches: [main]
-    paths:
-      - "tools/mail/**"
-      - "send_config.yaml"
   workflow_dispatch:
 
 permissions:
@@ -28,10 +25,32 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Unit tests
+      - name: Sender tests
         run: python3 tools/mail/test_send.py
 
-      - name: Config parses and every recipient looks like an address
+      - name: Sweep pipeline tests
+        run: python3 tools/sweep/test_run.py
+
+      - name: Every profile resolves and the sweep is runnable
+        run: |
+          python3 - <<'EOF'
+          import sys
+          sys.path.insert(0, "tools/sweep")
+          import run
+          for key, profile in run.PROFILES.items():
+              queries = len(profile["linkedin_queries"]) + len(profile["workday_queries"])
+              print(f"ok: {key:7s} {profile['email']:26s} {queries} queries, floor ${profile['floor']:,}")
+          EOF
+
+      - name: Document builders parse
+        run: |
+          set -e
+          for f in tools/build/*.js; do
+            node --check "$f"
+            echo "ok: $f"
+          done
+
+      - name: Mail config parses and every address is an address
         run: |
           python3 - <<'EOF'
           import re, sys
@@ -46,6 +65,25 @@ jobs:
               assert pattern.match(address), f"not an email address: {address!r}"
           assert "{date" in cfg.get("subject", ""), "subject has no {date} placeholder"
           print(f"ok: {len(cfg['recipients'])} recipients, from {cfg['sender']}")
+          EOF
+
+      - name: Every profile has a recipient and every recipient has a profile
+        run: |
+          python3 - <<'EOF'
+          import sys
+          sys.path.insert(0, "tools/sweep"); sys.path.insert(0, "tools/mail")
+          from pathlib import Path
+          import run
+          from send import read_config
+          cfg = read_config(Path("send_config.yaml"))
+          profiles = {p["email"] for p in run.PROFILES.values()}
+          recipients = set(cfg["recipients"])
+          missing = profiles - recipients
+          assert not missing, f"swept but never emailed: {sorted(missing)}"
+          extra = recipients - profiles
+          if extra:
+              print(f"note: emailed without a profile of their own: {sorted(extra)}")
+          print(f"ok: {len(profiles)} profiles, {len(recipients)} recipients")
           EOF
 
       - name: No em dashes anywhere in the repository
