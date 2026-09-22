@@ -1,0 +1,14 @@
+abbott|wd5|AbbottCareers|2000
+chewy|wd5|External|263
+cigna|wd5|CignaCareers|549
+cisco|wd5|Cisco_Careers|1335
+crowdstrike|wd5|CrowdstrikeCareers|376
+equifax|wd5|External|207
+humana|wd5|Humana_External_Career_Site|373
+mckesson|wd3|External_Careers|535
+medtronic|wd1|MedtronicCareers|1126
+ringcentral|wd1|Ringcentral_Careers|79
+salesforce|wd12|External_Career_Site|1474
+stryker|wd1|StrykerCareers|1457
+target|wd5|TargetCareers|2000
+thermofisher|wd5|ThermofisherCareers|2824
