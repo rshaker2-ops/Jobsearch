@@ -20,6 +20,10 @@ on:
         description: "Override the date to send, as YYYY-MM-DD. Leave blank for today."
         type: string
         default: ""
+      to:
+        description: "Send to this address only, instead of everyone in send_config.yaml. For testing."
+        type: string
+        default: ""
 
 # Needed so the job can commit the outbox to sent move and push it back.
 permissions:
@@ -60,5 +64,8 @@ jobs:
           fi
           if [ -n "${{ inputs.date }}" ]; then
             ARGS="$ARGS --date ${{ inputs.date }}"
+          fi
+          if [ -n "${{ inputs.to }}" ]; then
+            ARGS="$ARGS --to ${{ inputs.to }}"
           fi
           python3 tools/mail/send.py $ARGS
