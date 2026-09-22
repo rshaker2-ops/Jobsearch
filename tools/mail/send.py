@@ -6,8 +6,10 @@ Send today's queued HTML email, then file it away.
 
 Looks for outbox/<today>.html, where today is the current date in
 America/New_York rather than UTC, so a run scheduled near midnight UTC still
-picks the file a person would call "today". Sends it as an HTML email through
-smtp.gmail.com:465, then git mv's it into sent/, commits and pushes.
+picks the file a person would call "today". Anything sitting in
+outbox/<today>.files/ is attached. Sends it as an HTML email through
+smtp.gmail.com:465, then git mv's the HTML and its attachment directory into
+sent/, commits and pushes.
 
 Credentials come from the environment, never from the config file or the repo:
 
@@ -23,6 +25,7 @@ Exit codes:
 """
 
 import argparse
+import mimetypes
 import os
 import smtplib
 import ssl
@@ -44,6 +47,26 @@ SENT = REPO / "sent"
 TZ_NAME = "America/New_York"
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
+
+# Anything sitting in outbox/<date>.files/ is attached to that day's email.
+# The directory travels with the HTML into sent/ when the send succeeds.
+ATTACH_SUFFIX = ".files"
+
+# Gmail refuses a message over 25MB. Stop well short, because base64 encoding
+# inflates attachments by about a third and headers add more on top.
+ATTACH_WARN_BYTES = 15 * 1024 * 1024
+ATTACH_MAX_BYTES = 20 * 1024 * 1024
+
+# mimetypes does not know the Office formats on every system, and getting these
+# wrong makes Word refuse to open the attachment.
+MIME_OVERRIDES = {
+    ".docx": ("application", "vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    ".xlsx": ("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    ".pptx": ("application", "vnd.openxmlformats-officedocument.presentationml.presentation"),
+    ".doc": ("application", "msword"),
+    ".xls": ("application", "vnd.ms-excel"),
+    ".ppt": ("application", "vnd.ms-powerpoint"),
+}
 
 
 # --------------------------------------------------------------------------
@@ -109,6 +132,30 @@ def git(*args, check=True):
             f"{result.stderr.strip() or result.stdout.strip()}"
         )
     return result
+
+
+def guess_mime(path):
+    suffix = path.suffix.lower()
+    if suffix in MIME_OVERRIDES:
+        return MIME_OVERRIDES[suffix]
+    guessed, _ = mimetypes.guess_type(path.name)
+    if guessed and "/" in guessed:
+        maintype, _, subtype = guessed.partition("/")
+        return maintype, subtype
+    return "application", "octet-stream"
+
+
+def collect_attachments(directory):
+    """
+    Every file directly inside outbox/<date>.files/, sorted by name so the
+    order in the mail is predictable. Subdirectories and dotfiles are skipped.
+    """
+    if not directory.is_dir():
+        return []
+    return sorted(
+        (p for p in directory.iterdir() if p.is_file() and not p.name.startswith(".")),
+        key=lambda p: p.name.lower(),
+    )
 
 
 def html_to_text(html):
@@ -183,6 +230,8 @@ def main():
 
     queued = OUTBOX / f"{stamp}.html"
     delivered = SENT / f"{stamp}.html"
+    queued_files = OUTBOX / f"{stamp}{ATTACH_SUFFIX}"
+    delivered_files = SENT / f"{stamp}{ATTACH_SUFFIX}"
 
     # Refuse to send the same day twice. This is the guard that makes a manual
     # workflow_dispatch safe to press after a scheduled run has already gone.
@@ -219,11 +268,44 @@ def main():
     message.set_content(html_to_text(html))
     message.add_alternative(html, subtype="html")
 
+    attachments = collect_attachments(queued_files)
+    total_bytes = sum(a.stat().st_size for a in attachments)
+    if total_bytes > ATTACH_MAX_BYTES:
+        print(
+            f"error: attachments total {total_bytes / 1048576:.1f}MB, over the "
+            f"{ATTACH_MAX_BYTES / 1048576:.0f}MB limit this sender allows. "
+            f"Gmail rejects anything past 25MB once encoded. Remove or shrink "
+            f"files in {queued_files.relative_to(REPO)}.",
+            file=sys.stderr,
+        )
+        return 1
+    for item in attachments:
+        maintype, subtype = guess_mime(item)
+        message.add_attachment(
+            item.read_bytes(),
+            maintype=maintype,
+            subtype=subtype,
+            filename=item.name,
+        )
+
     print(f"date      {stamp} ({TZ_NAME})")
     print(f"file      {queued.relative_to(REPO)} ({len(html)} bytes)")
     print(f"subject   {subject}")
     print(f"from      {sender}")
     print(f"to        {', '.join(recipients)}")
+    if attachments:
+        print(f"attached  {len(attachments)} file(s), {total_bytes / 1024:.0f} KB total")
+        for item in attachments:
+            maintype, subtype = guess_mime(item)
+            print(f"          {item.name}  ({item.stat().st_size / 1024:.0f} KB, {maintype}/{subtype})")
+        if total_bytes > ATTACH_WARN_BYTES:
+            print(
+                f"warning: {total_bytes / 1048576:.1f}MB of attachments is close to "
+                f"the limit Gmail will accept.",
+                file=sys.stderr,
+            )
+    else:
+        print(f"attached  nothing ({queued_files.relative_to(REPO)} is absent or empty)")
 
     if args.dry_run:
         print("\ndry run: not sending, not moving, not committing.")
@@ -268,6 +350,12 @@ def main():
     try:
         SENT.mkdir(exist_ok=True)
         git("mv", str(queued.relative_to(REPO)), str(delivered.relative_to(REPO)))
+        if attachments:
+            git(
+                "mv",
+                str(queued_files.relative_to(REPO)),
+                str(delivered_files.relative_to(REPO)),
+            )
         git("config", "user.name", os.environ.get("GIT_AUTHOR_NAME", "github-actions[bot]"))
         git(
             "config",

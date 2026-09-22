@@ -19,7 +19,7 @@ gaps. Do not soften a finding because its subject is on the To: line. The
 candor is the product. If a role is a bad fit, say so and quote the line that
 makes it one.
 
-## Step 1 — sweep
+## Step 1: sweep
 
 ```
 python3 tools/sweep/run.py bob    /tmp/sweep
@@ -45,7 +45,7 @@ in all three lists. Say where a role actually sits in the write-up rather than
 assuming remote. Boston and Rhode Island are still prioritised for Edan and
 Robbie, they are just no longer the only non-remote option.
 
-## Step 2 — read the requirements
+## Step 2: read the requirements
 
 This is the part no script does, and the part that makes the document worth
 opening. The scored JSON ranks by band and keyword fit. That ranking is a
@@ -76,7 +76,7 @@ Two facts to carry into the write-up every time:
 2. **Quote the disqualifying line** on every rule-out. A rule-out without a
    quote is an opinion.
 
-## Step 3 — build the documents
+## Step 3: build the documents
 
 `tools/build/lib.js` has the docx helpers; `tools/build/_example_doc.js` is the
 22 Sep Bob document, which is the house format: finding first, then tier one as
@@ -91,14 +91,31 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
-## Step 4 — commit and email
+## Step 4: commit, then queue the email
 
-Commit to a `claude/` branch, push, open a draft PR.
+Commit the three documents to a `claude/` branch, push, open a draft PR.
 
-Then one email per recipient via `mcp__Gmail__send_message`, all three
-documents attached as base64, subject `Role sweep — <date>`. Body: three or
-four lines naming the single highest-value move for each person this week. Not
-a summary of the document. The document is the summary.
+Delivery is a separate step and it does NOT happen here. Do not try to send
+mail. A GitHub Actions job does that at 13:00 UTC, an hour after this run.
+What this step owes it is a queued email:
+
+1. Write `outbox/<YYYY-MM-DD>.html` using today's date in America/New_York.
+   Self-contained HTML: inline styles, a max-width table wrapper, no external
+   CSS and no external images. Three or four short paragraphs, one per person,
+   naming the single highest-value move for them this week and why. Not a
+   summary of the documents. The documents are the summary.
+2. Copy the three .docx into `outbox/<YYYY-MM-DD>.files/`, named so a stranger
+   can tell them apart in an inbox, for example
+   `Bob_Shaker_Role_Sweep_25Sep.docx`. Everything in that directory gets
+   attached.
+3. Push those two paths directly to `main`, not to the claude/ branch.
+   Scheduled Actions runs always check out the default branch, so a queued
+   email on a feature branch is invisible to the sender and nobody gets mail.
+   The .docx still go through the PR for review; the queued copies are
+   delivery artifacts.
+4. Verify with `python3 tools/mail/send.py --dry-run`. It must exit 0, name
+   the HTML file, and list three attachments. Exit 2 means the date or the
+   filename is wrong. Fix it before finishing.
 
 ## When a run finds nothing new
 

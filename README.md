@@ -11,10 +11,12 @@ Sends a queued HTML file to a fixed list of recipients every Monday and
 Thursday, then files it away so it can never go out twice.
 
 ```
-outbox/YYYY-MM-DD.html    queued, waiting for its date to come up
-sent/YYYY-MM-DD.html      delivered, moved here automatically
-send_config.yaml          recipients, sender address, subject template
-tools/mail/send.py        the sender
+outbox/YYYY-MM-DD.html          queued, waiting for its date to come up
+outbox/YYYY-MM-DD.files/        anything in here is attached to that email
+sent/YYYY-MM-DD.html            delivered, moved here automatically
+sent/YYYY-MM-DD.files/          its attachments, moved with it
+send_config.yaml                recipients, sender address, subject template
+tools/mail/send.py              the sender
 .github/workflows/send-scheduled-email.yml
 ```
 
@@ -31,6 +33,35 @@ already gone out.
 
 Credentials never live in the repository. They come from two repository secrets
 and are read from the environment at run time.
+
+### Attachments
+
+Put files in a directory named after the email with `.files` on the end, and
+every file directly inside it is attached, sorted by name:
+
+```
+outbox/2026-09-25.html
+outbox/2026-09-25.files/
+    Bob_Shaker_Role_Sweep_25Sep.docx
+    Edan_Mejias_Role_Sweep_25Sep.docx
+    Robbie_Shaker_Role_Sweep_25Sep.docx
+```
+
+The directory is optional. Without it the email goes out as body text only.
+Subdirectories and dotfiles are skipped. When the send succeeds the directory
+moves into `sent/` alongside its HTML, so a delivered day stays together.
+
+Word, Excel and PowerPoint files are given their correct MIME types explicitly,
+because `mimetypes` does not know the Office formats on every system and a
+wrong type makes Word refuse to open the attachment.
+
+Attachments are capped at 20MB total. Gmail refuses anything over 25MB, and
+base64 encoding inflates a file by about a third on the way out, so the cap
+sits below Gmail's to leave room. Going over fails the run before it connects,
+with a message naming the directory to trim. A warning prints from 15MB up.
+
+A dry run lists what would be attached, with sizes and detected types, which is
+the quickest way to confirm a file landed in the right place.
 
 ### 1. Create a Gmail app password
 
