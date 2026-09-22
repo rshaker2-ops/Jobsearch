@@ -1,0 +1,72 @@
+{
+  "bob": {
+    "name": "Robert J. Shaker II",
+    "folder": "Bob",
+    "email": "rshaker2@gmail.com",
+    "headline": "SVP and above  ·  remote US  ·  $275k base floor",
+    "floor": 275000,
+    "locations": ["remote-us"],
+    "linkedin_queries": [
+      "Chief Product Officer", "Chief Product and Technology Officer",
+      "SVP Product", "Senior Vice President Product", "Senior Vice President Engineering",
+      "Chief Technology Officer", "Head of Product", "VP Product Management"
+    ],
+    "workday_queries": [
+      "Chief Product Officer", "Senior Vice President Product",
+      "Vice President Product", "Vice President Engineering", "Head of Product"
+    ],
+    "title_keep": "\\b(svp|evp|senior vice president|executive vice president|chief (product|technology|technical|operating|digital)|cpto|cpo|cto|coo|head of (product|engineering|technology))\\b",
+    "title_scope": "\\b(product|engineering|technology|technical|platform|operating|operations)\\b",
+    "title_drop": "\\b(design|creative|research|marketing|content|brand|data scien|analytics|support|enablement|partnership|alliance|communications|recruit|people|finance|legal|sales|revenue|ciso|cfo|cmo|chro|cro|chief (financial|marketing|revenue|people|legal|security|medical|scientific|compliance|risk|customer|business|commercial|information security|staff)|staff|principal engineer|manager|associate|analyst|intern|director|assistant|deputy|chief of staff|field|fractional|co-?founder|equity only|unpaid|volunteer)\\b",
+    "hard_gate": "\\b(expert[- ]level proficiency|proficiency in (java|python|go|c\\+\\+)|hands[- ]on (coding|programming)|write (production )?code|writes code daily|system design|distributed systems (design|architecture)|site reliability|kubernetes|terraform)\\b",
+    "fit_signal": "\\b(product strategy|roadmap|org design|hiring and developing|p&l|go[- ]to[- ]market|product operating model|cross[- ]functional leadership|board)\\b",
+    "drop_seniority": false
+  },
+  "edan": {
+    "name": "Edan Mejias",
+    "folder": "Edan",
+    "email": "edanmejias@gmail.com",
+    "headline": "Senior / Technical PM and PMM  ·  remote, Boston, Rhode Island  ·  $120k floor",
+    "floor": 120000,
+    "years_experience": 4,
+    "locations": ["remote-us", "ma-ri"],
+    "linkedin_queries": [
+      "Senior Product Manager security", "Technical Product Manager",
+      "Product Marketing Manager cybersecurity", "Senior Product Manager developer platform",
+      "Product Manager API platform", "Senior Product Manager SaaS"
+    ],
+    "workday_queries": [
+      "Senior Product Manager", "Technical Product Manager",
+      "Product Marketing Manager", "Product Manager Security", "Principal Product Manager"
+    ],
+    "title_keep": "\\b(senior product manager|sr\\.? product manager|principal product manager|lead product manager|technical product manager|product manager|product marketing manager|senior product marketing)\\b",
+    "title_scope": "",
+    "title_drop": "\\b(intern|associate product|junior|director|vp|vice president|head of|chief|group product manager|gpm|contract|part[- ]time|unpaid|co-?founder|equity only)\\b",
+    "hard_gate": "\\b(people manage|manage a team of|direct reports|hiring and developing)\\b",
+    "fit_signal": "\\b(security|cyber|developer|api|platform|devops|saas|b2b|technical product)\\b",
+    "drop_seniority": false
+  },
+  "robbie": {
+    "name": "Robert J. Shaker",
+    "folder": "Robbie",
+    "email": "robertshaker3@gmail.com",
+    "headline": "Information security and GRC analyst  ·  remote or Boston area  ·  $94,500 floor",
+    "floor": 94500,
+    "years_experience": 1,
+    "locations": ["remote-us", "ma-ri"],
+    "linkedin_queries": [
+      "Information Security Analyst", "GRC Analyst", "Third Party Risk Analyst",
+      "Vendor Risk Analyst", "Security Compliance Analyst", "IT Risk Analyst"
+    ],
+    "workday_queries": [
+      "Information Security Analyst", "GRC Analyst", "Security Compliance",
+      "Risk Analyst", "Third Party Risk"
+    ],
+    "title_keep": "\\b((information |info|cyber|it )?security analyst|grc analyst|(governance|risk|compliance)[\\w\\s,&]{0,20}analyst|third[- ]party risk|vendor risk|customer trust|trust (and|&) safety analyst|security compliance|compliance analyst|risk analyst|soc analyst|security operations analyst)\\b",
+    "title_scope": "",
+    "title_drop": "\\b(engineer|engineering|developer|software|architect|devops|sre|penetration tester|red team|manager|director|senior manager|principal|lead |head of|vp|chief|intern|contract|part[- ]time|unpaid|clearance required|ts/sci|polygraph)\\b",
+    "hard_gate": "\\b(cissp required|active (secret|ts/sci|top secret)|polygraph|clearance required|must (hold|possess) (an? )?(active )?(security )?clearance|proficient in at least one scripting language|scripting language \\(python)\\b",
+    "fit_signal": "\\b(vendor risk|third[- ]party|questionnaire|soc 2|iso 27001|nist|grc|audit|policy|control|compliance)\\b",
+    "drop_seniority": true
+  }
+}
