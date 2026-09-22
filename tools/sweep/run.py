@@ -26,12 +26,9 @@ import wd_sweep
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROFILES = json.load(open(os.path.join(HERE, "profiles.json")))
 
-REMOTE = re.compile(r"\bremote\b|united states$|^united states$|anywhere", re.I)
+REMOTE = re.compile(r"\bremote\b|united states|\busa\b|anywhere", re.I)
 MA     = re.compile(r"\b(boston|cambridge|massachusetts|\bma\b|waltham|burlington|somerville|"
                     r"newton|quincy|providence|rhode island|\bri\b|medford|lexington|needham)\b", re.I)
-# Workday writes on-site roles as "United States - California - Alameda"; that is
-# not remote. Only a bare country, or an explicit "remote", counts.
-WD_ONSITE = re.compile(r"united states\s*[->]", re.I)
 SENIOR    = re.compile(r"\b(senior|sr\.?|lead|ii|iii|iv|principal|staff)\b", re.I)
 YEARS     = re.compile(r"(\d{1,2})\s*\+?\s*(?:or more\s*)?(?:years|yrs)", re.I)
 MONEY     = re.compile(r"\$\s?(\d{2,3}(?:,\d{3})|\d{2,3}(?:\.\d)?\s?[kK])\b")
@@ -49,9 +46,9 @@ def bands(text):
 
 
 def loc_ok(loc, p, ats):
+    # Any US location is kept, remote or on-site. Bob's call, 22 Sep: he wants
+    # to see on-site and hybrid US roles rather than have them filtered out.
     loc = (loc or "").strip()
-    if ats == "workday" and WD_ONSITE.search(loc) and not re.search(r"remote", loc, re.I):
-        return False
     if "ma-ri" in p["locations"] and MA.search(loc):
         return True
     return bool(REMOTE.search(loc))

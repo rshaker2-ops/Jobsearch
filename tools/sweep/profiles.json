@@ -3,17 +3,27 @@
     "name": "Robert J. Shaker II",
     "folder": "Bob",
     "email": "rshaker2@gmail.com",
-    "headline": "SVP and above  ·  remote US  ·  $275k base floor",
+    "headline": "SVP and above  \u00b7  United States, remote or on-site  \u00b7  $275k base floor",
     "floor": 275000,
-    "locations": ["remote-us"],
+    "locations": [
+      "us-any"
+    ],
     "linkedin_queries": [
-      "Chief Product Officer", "Chief Product and Technology Officer",
-      "SVP Product", "Senior Vice President Product", "Senior Vice President Engineering",
-      "Chief Technology Officer", "Head of Product", "VP Product Management"
+      "Chief Product Officer",
+      "Chief Product and Technology Officer",
+      "SVP Product",
+      "Senior Vice President Product",
+      "Senior Vice President Engineering",
+      "Chief Technology Officer",
+      "Head of Product",
+      "VP Product Management"
     ],
     "workday_queries": [
-      "Chief Product Officer", "Senior Vice President Product",
-      "Vice President Product", "Vice President Engineering", "Head of Product"
+      "Chief Product Officer",
+      "Senior Vice President Product",
+      "Vice President Product",
+      "Vice President Engineering",
+      "Head of Product"
     ],
     "title_keep": "\\b(svp|evp|senior vice president|executive vice president|chief (product|technology|technical|operating|digital)|cpto|cpo|cto|coo|head of (product|engineering|technology))\\b",
     "title_scope": "\\b(product|engineering|technology|technical|platform|operating|operations)\\b",
@@ -26,18 +36,27 @@
     "name": "Edan Mejias",
     "folder": "Edan",
     "email": "edanmejias@gmail.com",
-    "headline": "Senior / Technical PM and PMM  ·  remote, Boston, Rhode Island  ·  $120k floor",
+    "headline": "Senior / Technical PM and PMM  \u00b7  United States, Boston and Rhode Island prioritised  \u00b7  $120k floor",
     "floor": 120000,
     "years_experience": 4,
-    "locations": ["remote-us", "ma-ri"],
+    "locations": [
+      "us-any",
+      "ma-ri"
+    ],
     "linkedin_queries": [
-      "Senior Product Manager security", "Technical Product Manager",
-      "Product Marketing Manager cybersecurity", "Senior Product Manager developer platform",
-      "Product Manager API platform", "Senior Product Manager SaaS"
+      "Senior Product Manager security",
+      "Technical Product Manager",
+      "Product Marketing Manager cybersecurity",
+      "Senior Product Manager developer platform",
+      "Product Manager API platform",
+      "Senior Product Manager SaaS"
     ],
     "workday_queries": [
-      "Senior Product Manager", "Technical Product Manager",
-      "Product Marketing Manager", "Product Manager Security", "Principal Product Manager"
+      "Senior Product Manager",
+      "Technical Product Manager",
+      "Product Marketing Manager",
+      "Product Manager Security",
+      "Principal Product Manager"
     ],
     "title_keep": "\\b(senior product manager|sr\\.? product manager|principal product manager|lead product manager|technical product manager|product manager|product marketing manager|senior product marketing)\\b",
     "title_scope": "",
@@ -50,17 +69,27 @@
     "name": "Robert J. Shaker",
     "folder": "Robbie",
     "email": "robertshaker3@gmail.com",
-    "headline": "Information security and GRC analyst  ·  remote or Boston area  ·  $94,500 floor",
+    "headline": "Information security and GRC analyst  \u00b7  United States, Boston area prioritised  \u00b7  $94,500 floor",
     "floor": 94500,
     "years_experience": 1,
-    "locations": ["remote-us", "ma-ri"],
+    "locations": [
+      "us-any",
+      "ma-ri"
+    ],
     "linkedin_queries": [
-      "Information Security Analyst", "GRC Analyst", "Third Party Risk Analyst",
-      "Vendor Risk Analyst", "Security Compliance Analyst", "IT Risk Analyst"
+      "Information Security Analyst",
+      "GRC Analyst",
+      "Third Party Risk Analyst",
+      "Vendor Risk Analyst",
+      "Security Compliance Analyst",
+      "IT Risk Analyst"
     ],
     "workday_queries": [
-      "Information Security Analyst", "GRC Analyst", "Security Compliance",
-      "Risk Analyst", "Third Party Risk"
+      "Information Security Analyst",
+      "GRC Analyst",
+      "Security Compliance",
+      "Risk Analyst",
+      "Third Party Risk"
     ],
     "title_keep": "\\b((information |info|cyber|it )?security analyst|grc analyst|(governance|risk|compliance)[\\w\\s,&]{0,20}analyst|third[- ]party risk|vendor risk|customer trust|trust (and|&) safety analyst|security compliance|compliance analyst|risk analyst|soc analyst|security operations analyst)\\b",
     "title_scope": "",

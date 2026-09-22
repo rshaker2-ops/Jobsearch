@@ -39,6 +39,12 @@ stated anywhere in the posting.
 Criteria live in `tools/sweep/profiles.json`. Change a floor or a search term
 there, never in the scripts.
 
+**Location rule, as of 22 Sep:** any United States location is kept, remote or
+on-site. Bob widened this deliberately, so on-site and hybrid roles now appear
+in all three lists. Say where a role actually sits in the write-up rather than
+assuming remote. Boston and Rhode Island are still prioritised for Edan and
+Robbie, they are just no longer the only non-remote option.
+
 ## Step 2 — read the requirements
 
 This is the part no script does, and the part that makes the document worth
