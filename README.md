@@ -154,11 +154,21 @@ structure, attachment integrity (payloads are hashed against the originals and
 reopened as zips to prove Word will still accept them), ordering, the size cap,
 every refusal path, and the config parser.
 
-`.github/workflows/test-sender.yml` runs them on any pull request touching
-`tools/mail/` or `send_config.yaml`, and also checks every address in the
-config looks like an address. The sender itself only executes on a schedule,
-so without this a change that breaks it would merge green and surface as an
-email that never arrived.
+```bash
+python3 tools/sweep/test_run.py
+```
+
+Twenty-four more for the sweep pipeline: the profile schema, the location
+rules against the real strings both channels produce, band extraction, and
+experience-floor parsing. Every case is derived from a bug that actually
+shipped, so a failure means something that once broke is broken again.
+
+`.github/workflows/test-sender.yml` runs both suites on **every** pull
+request, with no paths filter. It also checks that every profile resolves,
+that the document builders parse, that every address in the mail config is an
+address, and that nobody is swept without being emailed. The sender and the
+sweep only execute on a schedule, so without this a change that breaks either
+would merge green and surface as an email that never arrived.
 
 ```bash
 python3 tools/check_no_em_dashes.py

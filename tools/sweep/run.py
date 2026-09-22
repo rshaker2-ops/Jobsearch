@@ -63,7 +63,12 @@ REMOTEISH = re.compile(r"\bremote\b|\banywhere\b|work from home", re.I)
 MA     = re.compile(r"\b(boston|cambridge|massachusetts|\bma\b|waltham|burlington|somerville|"
                     r"newton|quincy|providence|rhode island|\bri\b|medford|lexington|needham)\b", re.I)
 SENIOR    = re.compile(r"\b(senior|sr\.?|lead|ii|iii|iv|principal|staff)\b", re.I)
-YEARS     = re.compile(r"(\d{1,2})\s*\+?\s*(?:or more\s*)?(?:years|yrs)", re.I)
+# Captures the LOW end of a stated range. "12-15+ years" is a twelve year
+# floor, not fifteen, and reading it as fifteen wrongly rules out roles for the
+# candidates whose gap to the bar is the whole question.
+YEARS     = re.compile(
+    r"(\d{1,2})(?:\s*[-\u2013to]+\s*\d{1,2})?\s*\+?\s*(?:or more\s*)?(?:years|yrs)", re.I
+)
 MONEY     = re.compile(r"\$\s?(\d{2,3}(?:,\d{3})|\d{2,3}(?:\.\d)?\s?[kK])\b")
 
 
