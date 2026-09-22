@@ -155,10 +155,20 @@ reopened as zips to prove Word will still accept them), ordering, the size cap,
 every refusal path, and the config parser.
 
 `.github/workflows/test-sender.yml` runs them on any pull request touching
-`tools/mail/` or `send_config.yaml`, checks every address in the config looks
-like an address, and fails the build on an em dash anywhere in the repository.
-The sender itself only executes on a schedule, so without this a change that
-breaks it would merge green and surface as an email that never arrived.
+`tools/mail/` or `send_config.yaml`, and also checks every address in the
+config looks like an address. The sender itself only executes on a schedule,
+so without this a change that breaks it would merge green and surface as an
+email that never arrived.
+
+```bash
+python3 tools/check_no_em_dashes.py
+```
+
+The same workflow runs this, which fails the build on an em dash in any
+tracked text file. The rule is easy to satisfy and easy to forget: seventeen
+were found sitting in the document builder, rendering into the .docx being
+emailed to people. The script builds the character with `chr(8212)` rather
+than writing it out, so it cannot trip its own check.
 
 ### Exit codes
 

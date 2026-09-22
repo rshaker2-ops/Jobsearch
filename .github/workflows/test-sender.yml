@@ -49,25 +49,4 @@ jobs:
           EOF
 
       - name: No em dashes anywhere in the repository
-        run: |
-          python3 - <<'EOF'
-          import subprocess, sys
-          files = subprocess.run(
-              ["git", "ls-files"], capture_output=True, text=True
-          ).stdout.split()
-          skip = (".docx", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".zip")
-          bad = []
-          for name in files:
-              if name.endswith(skip):
-                  continue
-              try:
-                  body = open(name, encoding="utf-8").read()
-              except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError):
-                  continue
-              if "—" in body:
-                  bad.append(f"{name} ({body.count(chr(8212))})")
-          if bad:
-              print("em dashes found in:", *bad, sep="\n  ")
-              sys.exit(1)
-          print("ok: no em dashes")
-          EOF
+        run: python3 tools/check_no_em_dashes.py
