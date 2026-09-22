@@ -11,10 +11,12 @@ Sends a queued HTML file to a fixed list of recipients every Monday and
 Thursday, then files it away so it can never go out twice.
 
 ```
-outbox/YYYY-MM-DD.html    queued, waiting for its date to come up
-sent/YYYY-MM-DD.html      delivered, moved here automatically
-send_config.yaml          recipients, sender address, subject template
-tools/mail/send.py        the sender
+outbox/YYYY-MM-DD.html          queued, waiting for its date to come up
+outbox/YYYY-MM-DD.files/        anything in here is attached to that email
+sent/YYYY-MM-DD.html            delivered, moved here automatically
+sent/YYYY-MM-DD.files/          its attachments, moved with it
+send_config.yaml                recipients, sender address, subject template
+tools/mail/send.py              the sender
 .github/workflows/send-scheduled-email.yml
 ```
 
@@ -31,6 +33,35 @@ already gone out.
 
 Credentials never live in the repository. They come from two repository secrets
 and are read from the environment at run time.
+
+### Attachments
+
+Put files in a directory named after the email with `.files` on the end, and
+every file directly inside it is attached, sorted by name:
+
+```
+outbox/2026-09-25.html
+outbox/2026-09-25.files/
+    Bob_Shaker_Role_Sweep_25Sep.docx
+    Edan_Mejias_Role_Sweep_25Sep.docx
+    Robbie_Shaker_Role_Sweep_25Sep.docx
+```
+
+The directory is optional. Without it the email goes out as body text only.
+Subdirectories and dotfiles are skipped. When the send succeeds the directory
+moves into `sent/` alongside its HTML, so a delivered day stays together.
+
+Word, Excel and PowerPoint files are given their correct MIME types explicitly,
+because `mimetypes` does not know the Office formats on every system and a
+wrong type makes Word refuse to open the attachment.
+
+Attachments are capped at 20MB total. Gmail refuses anything over 25MB, and
+base64 encoding inflates a file by about a third on the way out, so the cap
+sits below Gmail's to leave room. Going over fails the run before it connects,
+with a message naming the directory to trim. A warning prints from 15MB up.
+
+A dry run lists what would be attached, with sizes and detected types, which is
+the quickest way to confirm a file landed in the right place.
 
 ### 1. Create a Gmail app password
 
@@ -85,6 +116,19 @@ and needs no credentials:
 python3 tools/mail/send.py --dry-run
 ```
 
+A dry run deliberately returns before it reads the credentials, so it proves
+the file and the config are right but says nothing about whether the secrets
+work. To test those, log in and hang up without sending:
+
+```bash
+python3 tools/mail/send.py --check-auth
+```
+
+That needs nothing queued. From the Actions tab the same check is the
+**check_auth** input on **Send scheduled email**, which is the right first
+press after adding the secrets: it proves the credentials before any mail can
+go out.
+
 Then run it for real from the Actions tab: open **Send scheduled email**, press
 **Run workflow**, and leave both inputs blank to send today's file. Tick
 **dry_run** instead to have the workflow check everything without sending, which
@@ -99,11 +143,38 @@ After a successful send the workflow commits the move as `Sent YYYY-MM-DD` and
 pushes, so `git pull` will show the file has left `outbox/` and arrived in
 `sent/`.
 
+### Tests
+
+```bash
+python3 tools/mail/test_send.py
+```
+
+Twenty tests, standard library only, no network. They cover the message
+structure, attachment integrity (payloads are hashed against the originals and
+reopened as zips to prove Word will still accept them), ordering, the size cap,
+every refusal path, and the config parser.
+
+`.github/workflows/test-sender.yml` runs them on any pull request touching
+`tools/mail/` or `send_config.yaml`, and also checks every address in the
+config looks like an address. The sender itself only executes on a schedule,
+so without this a change that breaks it would merge green and surface as an
+email that never arrived.
+
+```bash
+python3 tools/check_no_em_dashes.py
+```
+
+The same workflow runs this, which fails the build on an em dash in any
+tracked text file. The rule is easy to satisfy and easy to forget: seventeen
+were found sitting in the document builder, rendering into the .docx being
+emailed to people. The script builds the character with `chr(8212)` rather
+than writing it out, so it cannot trip its own check.
+
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| 0 | sent, or the dry run finished |
+| 0 | sent, or the dry run or auth check finished |
 | 1 | configuration or credentials problem |
 | 2 | nothing queued for that date |
 | 3 | already sent, a file of that name is in `sent/` |

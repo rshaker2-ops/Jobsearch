@@ -3,19 +3,26 @@
 Send today's queued HTML email, then file it away.
 
     python3 tools/mail/send.py [--dry-run] [--date YYYY-MM-DD] [--config PATH]
+    python3 tools/mail/send.py --check-auth
 
 Looks for outbox/<today>.html, where today is the current date in
 America/New_York rather than UTC, so a run scheduled near midnight UTC still
-picks the file a person would call "today". Sends it as an HTML email through
-smtp.gmail.com:465, then git mv's it into sent/, commits and pushes.
+picks the file a person would call "today". Anything sitting in
+outbox/<today>.files/ is attached. Sends it as an HTML email through
+smtp.gmail.com:465, then git mv's the HTML and its attachment directory into
+sent/, commits and pushes.
 
 Credentials come from the environment, never from the config file or the repo:
 
     GMAIL_USER          the full Gmail address to authenticate as
     GMAIL_APP_PASSWORD  a Google app password, not the account password
 
+--check-auth logs in to Gmail and disconnects without sending anything and
+without needing a queued file. It is the only way to prove the credentials
+work before a real send, because --dry-run returns before it reads them.
+
 Exit codes:
-    0  sent (or dry run completed)
+    0  sent (or dry run / auth check completed)
     1  configuration or credential problem
     2  no file queued for today
     3  already sent (a file of that name exists in sent/)
@@ -23,6 +30,7 @@ Exit codes:
 """
 
 import argparse
+import mimetypes
 import os
 import smtplib
 import ssl
@@ -44,6 +52,26 @@ SENT = REPO / "sent"
 TZ_NAME = "America/New_York"
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
+
+# Anything sitting in outbox/<date>.files/ is attached to that day's email.
+# The directory travels with the HTML into sent/ when the send succeeds.
+ATTACH_SUFFIX = ".files"
+
+# Gmail refuses a message over 25MB. Stop well short, because base64 encoding
+# inflates attachments by about a third and headers add more on top.
+ATTACH_WARN_BYTES = 15 * 1024 * 1024
+ATTACH_MAX_BYTES = 20 * 1024 * 1024
+
+# mimetypes does not know the Office formats on every system, and getting these
+# wrong makes Word refuse to open the attachment.
+MIME_OVERRIDES = {
+    ".docx": ("application", "vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    ".xlsx": ("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    ".pptx": ("application", "vnd.openxmlformats-officedocument.presentationml.presentation"),
+    ".doc": ("application", "msword"),
+    ".xls": ("application", "vnd.ms-excel"),
+    ".ppt": ("application", "vnd.ms-powerpoint"),
+}
 
 
 # --------------------------------------------------------------------------
@@ -111,6 +139,30 @@ def git(*args, check=True):
     return result
 
 
+def guess_mime(path):
+    suffix = path.suffix.lower()
+    if suffix in MIME_OVERRIDES:
+        return MIME_OVERRIDES[suffix]
+    guessed, _ = mimetypes.guess_type(path.name)
+    if guessed and "/" in guessed:
+        maintype, _, subtype = guessed.partition("/")
+        return maintype, subtype
+    return "application", "octet-stream"
+
+
+def collect_attachments(directory):
+    """
+    Every file directly inside outbox/<date>.files/, sorted by name so the
+    order in the mail is predictable. Subdirectories and dotfiles are skipped.
+    """
+    if not directory.is_dir():
+        return []
+    return sorted(
+        (p for p in directory.iterdir() if p.is_file() and not p.name.startswith(".")),
+        key=lambda p: p.name.lower(),
+    )
+
+
 def html_to_text(html):
     """
     Crude plain-text alternative so the message is not HTML only, which scores
@@ -130,6 +182,57 @@ def html_to_text(html):
     return text.strip()
 
 
+def credentials():
+    """The two secrets, or a message naming whichever is missing."""
+    user = os.environ.get("GMAIL_USER")
+    password = os.environ.get("GMAIL_APP_PASSWORD")
+    missing = [
+        name
+        for name, value in (("GMAIL_USER", user), ("GMAIL_APP_PASSWORD", password))
+        if not value
+    ]
+    if missing:
+        return None, None, (
+            f"missing environment variable(s): {', '.join(missing)}.\n"
+            f"       Set them as repository secrets, or export them locally."
+        )
+    return user, password, None
+
+
+def check_auth():
+    """
+    Log in and hang up. Nothing is sent, nothing is read from the outbox, and
+    no file has to be queued. This exists because --dry-run returns before it
+    ever looks at the credentials, so it cannot tell you whether they work.
+    """
+    user, password, problem = credentials()
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
+        return 1
+    print(f"host      {SMTP_HOST}:{SMTP_PORT}")
+    print(f"user      {user}")
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=60) as smtp:
+            smtp.login(user, password)
+    except smtplib.SMTPAuthenticationError as exc:
+        print(
+            f"error: Gmail rejected the login ({exc.smtp_code}).\n"
+            f"       GMAIL_APP_PASSWORD must be a Google app password, 16\n"
+            f"       characters, not the account password, and 2-Step\n"
+            f"       Verification must be on for {user}.\n"
+            f"       If this is a Workspace account, an administrator may have\n"
+            f"       disabled app passwords entirely.",
+            file=sys.stderr,
+        )
+        return 1
+    except Exception as exc:
+        print(f"error: could not reach {SMTP_HOST}: {exc}", file=sys.stderr)
+        return 1
+    print("\nauthenticated. The credentials work. Nothing was sent.")
+    return 0
+
+
 # --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
@@ -142,6 +245,12 @@ def main():
         help="do everything except send, move, commit and push",
     )
     parser.add_argument(
+        "--check-auth",
+        action="store_true",
+        help="log in to Gmail and disconnect, sending nothing. Proves the "
+             "credentials work without needing anything queued.",
+    )
+    parser.add_argument(
         "--date",
         help="override the date to send, as YYYY-MM-DD (for testing)",
     )
@@ -151,6 +260,9 @@ def main():
         help="path to send_config.yaml",
     )
     args = parser.parse_args()
+
+    if args.check_auth:
+        return check_auth()
 
     config_path = Path(args.config)
     if not config_path.is_file():
@@ -183,6 +295,8 @@ def main():
 
     queued = OUTBOX / f"{stamp}.html"
     delivered = SENT / f"{stamp}.html"
+    queued_files = OUTBOX / f"{stamp}{ATTACH_SUFFIX}"
+    delivered_files = SENT / f"{stamp}{ATTACH_SUFFIX}"
 
     # Refuse to send the same day twice. This is the guard that makes a manual
     # workflow_dispatch safe to press after a scheduled run has already gone.
@@ -219,29 +333,52 @@ def main():
     message.set_content(html_to_text(html))
     message.add_alternative(html, subtype="html")
 
+    attachments = collect_attachments(queued_files)
+    total_bytes = sum(a.stat().st_size for a in attachments)
+    if total_bytes > ATTACH_MAX_BYTES:
+        print(
+            f"error: attachments total {total_bytes / 1048576:.1f}MB, over the "
+            f"{ATTACH_MAX_BYTES / 1048576:.0f}MB limit this sender allows. "
+            f"Gmail rejects anything past 25MB once encoded. Remove or shrink "
+            f"files in {queued_files.relative_to(REPO)}.",
+            file=sys.stderr,
+        )
+        return 1
+    for item in attachments:
+        maintype, subtype = guess_mime(item)
+        message.add_attachment(
+            item.read_bytes(),
+            maintype=maintype,
+            subtype=subtype,
+            filename=item.name,
+        )
+
     print(f"date      {stamp} ({TZ_NAME})")
     print(f"file      {queued.relative_to(REPO)} ({len(html)} bytes)")
     print(f"subject   {subject}")
     print(f"from      {sender}")
     print(f"to        {', '.join(recipients)}")
+    if attachments:
+        print(f"attached  {len(attachments)} file(s), {total_bytes / 1024:.0f} KB total")
+        for item in attachments:
+            maintype, subtype = guess_mime(item)
+            print(f"          {item.name}  ({item.stat().st_size / 1024:.0f} KB, {maintype}/{subtype})")
+        if total_bytes > ATTACH_WARN_BYTES:
+            print(
+                f"warning: {total_bytes / 1048576:.1f}MB of attachments is close to "
+                f"the limit Gmail will accept.",
+                file=sys.stderr,
+            )
+    else:
+        print(f"attached  nothing ({queued_files.relative_to(REPO)} is absent or empty)")
 
     if args.dry_run:
         print("\ndry run: not sending, not moving, not committing.")
         return 0
 
-    user = os.environ.get("GMAIL_USER")
-    password = os.environ.get("GMAIL_APP_PASSWORD")
-    if not user or not password:
-        missing = [
-            name
-            for name, value in (("GMAIL_USER", user), ("GMAIL_APP_PASSWORD", password))
-            if not value
-        ]
-        print(
-            f"error: missing environment variable(s): {', '.join(missing)}.\n"
-            f"       Set them as repository secrets, or export them locally.",
-            file=sys.stderr,
-        )
+    user, password, problem = credentials()
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
         return 1
 
     try:
@@ -268,6 +405,12 @@ def main():
     try:
         SENT.mkdir(exist_ok=True)
         git("mv", str(queued.relative_to(REPO)), str(delivered.relative_to(REPO)))
+        if attachments:
+            git(
+                "mv",
+                str(queued_files.relative_to(REPO)),
+                str(delivered_files.relative_to(REPO)),
+            )
         git("config", "user.name", os.environ.get("GIT_AUTHOR_NAME", "github-actions[bot]"))
         git(
             "config",
