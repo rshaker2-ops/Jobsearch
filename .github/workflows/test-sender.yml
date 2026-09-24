@@ -107,9 +107,17 @@ jobs:
                           f"any profile's email. Known: {sorted(known)}"
                       )
                       checked += 1
+                  addressed = {body.stem for body in bodies}
                   for item in day.iterdir():
                       ok = item.suffix == ".html" or item.name.endswith(".files")
                       assert ok, f"{item} is neither <address>.html nor <address>.files/"
+                      if item.name.endswith(".files"):
+                          owner = item.name[: -len(".files")]
+                          assert owner in addressed, (
+                              f"{item} has no {owner}.html beside it, so those "
+                              f"attachments would never be sent and {owner} "
+                              f"would silently get no mail"
+                          )
           print(f"ok: {checked} per-recipient bodies, all addressed to known profiles")
           EOF
 
