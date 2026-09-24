@@ -7,32 +7,64 @@ the scheduled email sender.
 
 ## Scheduled email sender
 
-Sends a queued HTML file to a fixed list of recipients every Monday and
-Thursday, then files it away so it can never go out twice.
+Sends queued HTML every Monday and Thursday, then files it away so it can
+never go out twice. Two layouts, and the one you queue decides which you get.
 
 ```
-outbox/YYYY-MM-DD.html          queued, waiting for its date to come up
-outbox/YYYY-MM-DD.files/        anything in here is attached to that email
-sent/YYYY-MM-DD.html            delivered, moved here automatically
-sent/YYYY-MM-DD.files/          its attachments, moved with it
+outbox/YYYY-MM-DD/              per recipient: one message each (preferred)
+    someone@example.com.html        that person's body
+    someone@example.com.files/      that person's attachments, theirs only
+outbox/YYYY-MM-DD.html          broadcast: one message to everyone in the config
+outbox/YYYY-MM-DD.files/        attached to that one message
+sent/YYYY-MM-DD/                delivered, moved here automatically
+sent/YYYY-MM-DD.html            same, for a broadcast
 send_config.yaml                recipients, sender address, subject template
 tools/mail/send.py              the sender
 .github/workflows/send-scheduled-email.yml
 ```
 
+Use the per-recipient layout whenever the content differs by reader, which is
+most of the time. A broadcast puts every address on one To: line and hands
+each recipient every attachment, so one person's document is visible to all of
+them. That is a distribution decision, not a formatting one. Get it wrong and
+it cannot be undone.
+
 The job runs at 13:00 UTC on Mondays and Thursdays, which is 9am Eastern during
 daylight saving and 8am Eastern after it ends. GitHub cron is always UTC and
 does not follow local clock changes, so the hour shifts by one in November.
 
-On the scheduled day the sender looks for `outbox/<today>.html`, where today is
-the date in America/New_York rather than UTC. If that file is not there the run
-fails with a clear message and nothing is sent. If a file of the same name is
-already sitting in `sent/`, the run refuses rather than sending a second copy,
-which makes it safe to press the manual trigger after a scheduled run has
-already gone out.
+On the scheduled day the sender looks for `outbox/<today>/` first and
+`outbox/<today>.html` second, where today is the date in America/New_York
+rather than UTC. If neither is there the run fails with a clear message and
+nothing is sent. If both are there it refuses, because sending both would mail
+people twice. If something of that name is already sitting in `sent/`, the run
+refuses rather than sending a second copy, which makes it safe to press the
+manual trigger after a scheduled run has already gone out.
 
 Credentials never live in the repository. They come from two repository secrets
 and are read from the environment at run time.
+
+### Per-recipient sends
+
+Make a directory named after the date and put one `<address>.html` inside it
+per person. Attachments go in a matching `<address>.files/`:
+
+```
+outbox/2026-09-28/
+    rshaker2@gmail.com.html
+    rshaker2@gmail.com.files/Bob_Shaker_Role_Sweep_28Sep.docx
+    edanmejias@gmail.com.html
+    edanmejias@gmail.com.files/Edan_Mejias_Role_Sweep_28Sep.docx
+```
+
+Each address gets its own message with its own body and its own attachments.
+Nobody sees anybody else's address, body or files. `send_config.yaml` is not
+consulted for the recipient list in this mode: the filenames decide, so an
+address with no `.html` simply gets no mail. Every file directly inside the
+directory must be named after a valid email address, or the run refuses.
+
+When the send succeeds the whole `outbox/<date>/` directory moves to
+`sent/<date>/` in one move.
 
 ### Attachments
 
@@ -47,6 +79,7 @@ outbox/2026-09-25.files/
     Robbie_Shaker_Role_Sweep_25Sep.docx
 ```
 
+That is the broadcast form, where all three documents go to all recipients.
 The directory is optional. Without it the email goes out as body text only.
 Subdirectories and dotfiles are skipped. When the send succeeds the directory
 moves into `sent/` alongside its HTML, so a delivered day stays together.
@@ -55,7 +88,7 @@ Word, Excel and PowerPoint files are given their correct MIME types explicitly,
 because `mimetypes` does not know the Office formats on every system and a
 wrong type makes Word refuse to open the attachment.
 
-Attachments are capped at 20MB total. Gmail refuses anything over 25MB, and
+Attachments are capped at 20MB per message. Gmail refuses anything over 25MB, and
 base64 encoding inflates a file by about a third on the way out, so the cap
 sits below Gmail's to leave room. Going over fails the run before it connects,
 with a message naming the directory to trim. A warning prints from 15MB up.
@@ -135,9 +168,14 @@ Then run it for real from the Actions tab: open **Send scheduled email**, press
 is the safer first press because it proves the checkout, the Python setup and
 the config parse before any mail moves.
 
-The **date** input overrides which file is picked, so
-`2026-09-22` sends `outbox/2026-09-22.html` regardless of what today is. Useful
-for replaying a specific day.
+The **date** input overrides which day is picked, so `2026-09-22` sends
+`outbox/2026-09-22/` or `outbox/2026-09-22.html` regardless of what today is.
+Useful for replaying a specific day.
+
+The **to** input replaces the recipient list for one run. On a per-recipient
+day that does not merge the messages: each candidate's message still goes out
+separately, all of them to the test address, so you see exactly what each
+person would have received.
 
 After a successful send the workflow commits the move as `Sent YYYY-MM-DD` and
 pushes, so `git pull` will show the file has left `outbox/` and arrived in
