@@ -18,6 +18,15 @@ Credentials come from the environment, never from the config file or the repo:
     GMAIL_USER          the full Gmail address to authenticate as
     GMAIL_APP_PASSWORD  a Google app password, not the account password
 
+Two layouts. A single broadcast, outbox/<date>.html with an optional
+outbox/<date>.files/, goes to everyone in send_config.yaml with every
+attachment. A per-recipient send, outbox/<date>/ holding <address>.html and
+an optional <address>.files/ per person, sends each address its own body and
+its own attachments and nothing belonging to anyone else. Use the second
+whenever the content differs by reader, which is most of the time: a shared
+send puts every recipient's address on one To: line and hands each of them
+everybody else's documents.
+
 --to replaces the recipient list for one run, so a real send can be tested
 against a single inbox without mailing everybody on the list.
 
@@ -36,6 +45,7 @@ Exit codes:
 import argparse
 import mimetypes
 import os
+import re
 import smtplib
 import ssl
 import subprocess
@@ -60,6 +70,11 @@ SMTP_PORT = 465
 # Anything sitting in outbox/<date>.files/ is attached to that day's email.
 # The directory travels with the HTML into sent/ when the send succeeds.
 ATTACH_SUFFIX = ".files"
+
+# A directory at outbox/<date>/ means one message per recipient rather than one
+# message to everybody. Added 24 Sep after a broadcast sent all four candidates
+# each other's documents and put all four addresses on a single To: line.
+ADDRESS = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 # Gmail refuses a message over 25MB. Stop well short, because base64 encoding
 # inflates attachments by about a third and headers add more on top.
@@ -241,6 +256,54 @@ def check_auth():
 # main
 # --------------------------------------------------------------------------
 
+def build_message(sender, recipients, subject, html, attachments):
+    """One message. Attachments are already collected and size-checked."""
+    message = EmailMessage()
+    message["From"] = formataddr(("Bob Shaker", sender))
+    message["To"] = ", ".join(recipients)
+    message["Subject"] = subject
+    message["Date"] = formatdate(localtime=True)
+    message["Message-ID"] = make_msgid()
+    message.set_content(html_to_text(html))
+    message.add_alternative(html, subtype="html")
+    for item in attachments:
+        maintype, subtype = guess_mime(item)
+        message.add_attachment(item.read_bytes(), maintype=maintype,
+                               subtype=subtype, filename=item.name)
+    return message
+
+
+def deliver(messages, user, password, sender):
+    """Open one connection and send every message through it."""
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=60) as smtp:
+        smtp.login(user, password)
+        for message, to_addrs in messages:
+            smtp.send_message(message, from_addr=sender, to_addrs=to_addrs)
+
+
+def per_recipient_jobs(directory):
+    """
+    outbox/<date>/ holding <address>.html and an optional <address>.files/.
+    Returns [(address, html_path, [attachments])], sorted, or None if the
+    directory is not present.
+    """
+    if not directory.is_dir():
+        return None
+    jobs = []
+    for html in sorted(directory.glob("*.html")):
+        address = html.stem
+        if not ADDRESS.match(address):
+            raise ValueError(
+                f"{html.name} is not named after an email address. In a "
+                f"per-recipient send every file must be <address>.html."
+            )
+        jobs.append((address, html, collect_attachments(directory / f"{address}{ATTACH_SUFFIX}")))
+    if not jobs:
+        raise ValueError(f"{directory} exists but holds no <address>.html files")
+    return jobs
+
+
 def main():
     parser = argparse.ArgumentParser(description="Send today's queued HTML email.")
     parser.add_argument(
@@ -292,7 +355,7 @@ def main():
         print(f"error: no recipients listed in {config_path}", file=sys.stderr)
         return 1
     if args.to:
-        print(f"note      overriding the configured recipients with --to")
+        print("note      overriding the configured recipients with --to")
     if not sender:
         print(f"error: no sender address in {config_path}", file=sys.stderr)
         return 1
@@ -310,83 +373,115 @@ def main():
     delivered = SENT / f"{stamp}.html"
     queued_files = OUTBOX / f"{stamp}{ATTACH_SUFFIX}"
     delivered_files = SENT / f"{stamp}{ATTACH_SUFFIX}"
+    queued_dir = OUTBOX / stamp
+    delivered_dir = SENT / stamp
 
     # Refuse to send the same day twice. This is the guard that makes a manual
     # workflow_dispatch safe to press after a scheduled run has already gone.
-    if delivered.exists():
+    if delivered.exists() or delivered_dir.exists():
+        already = delivered if delivered.exists() else delivered_dir
         print(
-            f"error: {delivered.relative_to(REPO)} already exists, so "
+            f"error: {already.relative_to(REPO)} already exists, so "
             f"{stamp} has been sent. Nothing to do.",
             file=sys.stderr,
         )
         return 3
 
-    if not queued.is_file():
+    if queued.is_file() and queued_dir.is_dir():
         print(
-            f"error: nothing queued for {stamp}.\n"
-            f"       Expected {queued.relative_to(REPO)} and it is not there.\n"
-            f"       Write that file, commit it, then run this again.",
+            f"error: both {queued.relative_to(REPO)} and "
+            f"{queued_dir.relative_to(REPO)}/ exist for {stamp}. Keep one. "
+            f"The directory is the per-recipient layout and the file is the "
+            f"broadcast layout, and sending both would mail people twice.",
             file=sys.stderr,
         )
-        return 2
-
-    html = queued.read_text(encoding="utf-8")
-    if not html.strip():
-        print(f"error: {queued.relative_to(REPO)} is empty", file=sys.stderr)
         return 2
 
     subject = subject_template.format(date=stamp, date_long=date_long)
 
-    message = EmailMessage()
-    message["From"] = formataddr(("Bob Shaker", sender))
-    message["To"] = ", ".join(recipients)
-    message["Subject"] = subject
-    message["Date"] = formatdate(localtime=True)
-    message["Message-ID"] = make_msgid()
-    message.set_content(html_to_text(html))
-    message.add_alternative(html, subtype="html")
+    try:
+        jobs = per_recipient_jobs(queued_dir)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
-    attachments = collect_attachments(queued_files)
-    total_bytes = sum(a.stat().st_size for a in attachments)
-    if total_bytes > ATTACH_MAX_BYTES:
-        print(
-            f"error: attachments total {total_bytes / 1048576:.1f}MB, over the "
-            f"{ATTACH_MAX_BYTES / 1048576:.0f}MB limit this sender allows. "
-            f"Gmail rejects anything past 25MB once encoded. Remove or shrink "
-            f"files in {queued_files.relative_to(REPO)}.",
-            file=sys.stderr,
-        )
-        return 1
-    for item in attachments:
-        maintype, subtype = guess_mime(item)
-        message.add_attachment(
-            item.read_bytes(),
-            maintype=maintype,
-            subtype=subtype,
-            filename=item.name,
-        )
-
-    print(f"date      {stamp} ({TZ_NAME})")
-    print(f"file      {queued.relative_to(REPO)} ({len(html)} bytes)")
-    print(f"subject   {subject}")
-    print(f"from      {sender}")
-    print(f"to        {', '.join(recipients)}")
-    if attachments:
-        print(f"attached  {len(attachments)} file(s), {total_bytes / 1024:.0f} KB total")
-        for item in attachments:
-            maintype, subtype = guess_mime(item)
-            print(f"          {item.name}  ({item.stat().st_size / 1024:.0f} KB, {maintype}/{subtype})")
-        if total_bytes > ATTACH_WARN_BYTES:
+    if jobs is not None:
+        # One message per recipient. Nobody receives anybody else's body or
+        # attachments, and nobody sees anybody else's address.
+        mode = "per recipient"
+        plan = []
+        for address, html_path, attachments in jobs:
+            html = html_path.read_text(encoding="utf-8")
+            if not html.strip():
+                print(f"error: {html_path.relative_to(REPO)} is empty", file=sys.stderr)
+                return 2
+            plan.append(([address], html, attachments, html_path))
+        moves = [(queued_dir, delivered_dir)]
+    else:
+        if not queued.is_file():
             print(
-                f"warning: {total_bytes / 1048576:.1f}MB of attachments is close to "
-                f"the limit Gmail will accept.",
+                f"error: nothing queued for {stamp}.\n"
+                f"       Expected {queued.relative_to(REPO)}, or a directory at\n"
+                f"       {queued_dir.relative_to(REPO)}/ holding one <address>.html per person.\n"
+                f"       Write one of those, commit it, then run this again.",
                 file=sys.stderr,
             )
-    else:
-        print(f"attached  nothing ({queued_files.relative_to(REPO)} is absent or empty)")
+            return 2
+        html = queued.read_text(encoding="utf-8")
+        if not html.strip():
+            print(f"error: {queued.relative_to(REPO)} is empty", file=sys.stderr)
+            return 2
+        mode = "broadcast"
+        attachments = collect_attachments(queued_files)
+        plan = [(list(recipients), html, attachments, queued)]
+        moves = [(queued, delivered)]
+        if attachments:
+            moves.append((queued_files, delivered_files))
+
+    if args.to:
+        # Every message in the plan is redirected, so a per-recipient run under
+        # --to lands one message per candidate in the same test inbox.
+        plan = [(list(args.to), html, att, src) for (_, html, att, src) in plan]
+
+    # Gmail's size limit is per message, so this is checked per message rather
+    # than across the run. Four people receiving 6MB each is fine; one person
+    # receiving 24MB is not.
+    for addrs, _, attachments, src in plan:
+        size = sum(a.stat().st_size for a in attachments)
+        if size > ATTACH_MAX_BYTES:
+            print(
+                f"error: attachments for {', '.join(addrs)} total "
+                f"{size / 1048576:.1f}MB, over the "
+                f"{ATTACH_MAX_BYTES / 1048576:.0f}MB limit this sender allows "
+                f"({src.relative_to(REPO)}).",
+                file=sys.stderr,
+            )
+            return 1
+
+    print(f"date      {stamp} ({TZ_NAME})")
+    print(f"mode      {mode}, {len(plan)} message(s)")
+    print(f"subject   {subject}")
+    print(f"from      {sender}")
+    for addrs, html, attachments, src in plan:
+        print(f"\n  to      {', '.join(addrs)}")
+        print(f"  body    {src.relative_to(REPO)} ({len(html)} bytes)")
+        if attachments:
+            for item in attachments:
+                maintype, subtype = guess_mime(item)
+                print(f"  attach  {item.name}  ({item.stat().st_size / 1024:.0f} KB, {maintype}/{subtype})")
+        else:
+            print("  attach  nothing")
+        size = sum(a.stat().st_size for a in attachments)
+        if size > ATTACH_WARN_BYTES:
+            print(
+                f"\nwarning: {size / 1048576:.1f}MB of attachments for "
+                f"{', '.join(addrs)}.",
+                file=sys.stderr,
+            )
+    print()
 
     if args.dry_run:
-        print("\ndry run: not sending, not moving, not committing.")
+        print("dry run: not sending, not moving, not committing.")
         return 0
 
     user, password, problem = credentials()
@@ -394,11 +489,12 @@ def main():
         print(f"error: {problem}", file=sys.stderr)
         return 1
 
+    messages = [
+        (build_message(sender, addrs, subject, html, att), addrs)
+        for addrs, html, att, _ in plan
+    ]
     try:
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=60) as smtp:
-            smtp.login(user, password)
-            smtp.send_message(message, from_addr=sender, to_addrs=recipients)
+        deliver(messages, user, password, sender)
     except smtplib.SMTPAuthenticationError:
         print(
             "error: Gmail rejected the login. GMAIL_APP_PASSWORD must be a "
@@ -411,19 +507,14 @@ def main():
         print(f"error: delivery failed: {exc}", file=sys.stderr)
         return 4
 
-    print(f"\nsent to {len(recipients)} recipient(s).")
+    print(f"\nsent {len(plan)} message(s).")
 
     # Delivery succeeded. From here a failure must not look like a failed send,
     # so git problems are reported loudly but the mail is already gone.
     try:
         SENT.mkdir(exist_ok=True)
-        git("mv", str(queued.relative_to(REPO)), str(delivered.relative_to(REPO)))
-        if attachments:
-            git(
-                "mv",
-                str(queued_files.relative_to(REPO)),
-                str(delivered_files.relative_to(REPO)),
-            )
+        for src, dst in moves:
+            git("mv", str(src.relative_to(REPO)), str(dst.relative_to(REPO)))
         git("config", "user.name", os.environ.get("GIT_AUTHOR_NAME", "github-actions[bot]"))
         git(
             "config",
@@ -437,13 +528,13 @@ def main():
     except RuntimeError as exc:
         print(
             f"error: the email WAS SENT but filing it failed: {exc}\n"
-            f"       Move {queued.relative_to(REPO)} to sent/ by hand, or the "
-            f"next run for this date will refuse rather than send twice.",
+            f"       Move the queued paths for {stamp} into sent/ by hand, or "
+            f"the next run for this date will refuse rather than send twice.",
             file=sys.stderr,
         )
         return 4
 
-    print(f"moved to {delivered.relative_to(REPO)}, committed and pushed.")
+    print("filed into sent/, committed and pushed.")
     return 0
 
 

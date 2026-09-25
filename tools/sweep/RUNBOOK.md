@@ -5,7 +5,8 @@ of the last run. Everything needed is in this repo.
 
 ## What it produces
 
-Four Word documents, one per candidate, emailed to all four recipients.
+Four Word documents, one per candidate. Each candidate is emailed their own
+document and nobody else's.
 
 | Candidate | Folder | Email | Lane |
 |---|---|---|---|
@@ -14,11 +15,16 @@ Four Word documents, one per candidate, emailed to all four recipients.
 | Robert J. Shaker (Robbie) | `Robbie/` | robertshaker3@gmail.com | Information security and GRC analyst |
 | Jeffrey G. Walton (Jeff) | `Jeff/` | jgordonwalton@gmail.com | Customer success, onboarding, enablement |
 
-**Everyone receives every document.** Bob chose this deliberately
-on 22 Sep 2026, knowing the analysis is frank and discusses each candidate's
-gaps. Do not soften a finding because its subject is on the To: line. The
-candor is the product. If a role is a bad fit, say so and quote the line that
-makes it one.
+**One document per person, to that person only.** On 24 Sep 2026 a single
+broadcast put all four addresses on one To: line and attached all four
+documents, so every candidate received the others' comp floors, experience
+gaps and verdicts. That must not happen again. The sender now supports a
+per-recipient layout and Step 4 uses it.
+
+The analysis stays frank. Each reader sees only their own, so do not soften a
+finding to spare them. The candor is the product. If a role is a bad fit, say
+so and quote the line that makes it one. What changes is distribution, not
+tone.
 
 ## Step 1: sweep
 
@@ -127,23 +133,51 @@ Delivery is a separate step and it does NOT happen here. Do not try to send
 mail. A GitHub Actions job does that at 13:00 UTC, an hour after this run.
 What this step owes it is a queued email:
 
-1. Write `outbox/<YYYY-MM-DD>.html` using today's date in America/New_York.
-   Self-contained HTML: inline styles, a max-width table wrapper, no external
-   CSS and no external images. Three or four short paragraphs, one per person,
-   naming the single highest-value move for them this week and why. Not a
-   summary of the documents. The documents are the summary.
-2. Copy all four .docx into `outbox/<YYYY-MM-DD>.files/`, named so a stranger
-   can tell them apart in an inbox, for example
-   `Bob_Shaker_Role_Sweep_25Sep.docx`. Everything in that directory gets
-   attached.
-3. Push those two paths directly to `main`, not to the claude/ branch.
+1. Make a directory `outbox/<YYYY-MM-DD>/` using today's date in
+   America/New_York. The directory, not a single `.html` file, is what tells
+   the sender to write to each person separately.
+2. Inside it write one `<address>.html` per candidate, named after the exact
+   address in `tools/sweep/profiles.json`:
+
+   ```
+   outbox/2026-09-28/
+     rshaker2@gmail.com.html
+     rshaker2@gmail.com.files/Bob_Shaker_Role_Sweep_28Sep.docx
+     edanmejias@gmail.com.html
+     edanmejias@gmail.com.files/Edan_Mejias_Role_Sweep_28Sep.docx
+     robertshaker3@gmail.com.html
+     robertshaker3@gmail.com.files/Robbie_Shaker_Role_Sweep_28Sep.docx
+     jgordonwalton@gmail.com.html
+     jgordonwalton@gmail.com.files/Jeff_Walton_Role_Sweep_28Sep.docx
+   ```
+
+   Each body is self-contained HTML: inline styles, a max-width table wrapper,
+   no external CSS and no external images. Two or three short paragraphs about
+   that one person, naming the single highest-value move for them this week and
+   why. Not a summary of the document. The document is the summary.
+
+   **Write each body as if the reader is the only person receiving it,**
+   because they are. No "here is everyone's sweep", no comparisons to the other
+   candidates, no mention of who else is on the list. A candidate should not be
+   able to tell from their email that anybody else got one.
+3. Put that person's .docx, and only that person's, in their `.files/`
+   directory. A name a stranger could tell apart in an inbox, for example
+   `Bob_Shaker_Role_Sweep_28Sep.docx`.
+4. Push `outbox/<YYYY-MM-DD>/` directly to `main`, not to the claude/ branch.
    Scheduled Actions runs always check out the default branch, so a queued
    email on a feature branch is invisible to the sender and nobody gets mail.
    The .docx still go through the PR for review; the queued copies are
    delivery artifacts.
-4. Verify with `python3 tools/mail/send.py --dry-run`. It must exit 0, name
-   the HTML file, and list four attachments. Exit 2 means the date or the
-   filename is wrong. Fix it before finishing.
+5. Verify with `python3 tools/mail/send.py --dry-run`. It must exit 0, report
+   `mode  per recipient, 4 message(s)`, and show exactly one attachment under
+   each address. If it reports `broadcast`, the directory is named wrong and
+   everybody is about to get everybody else's mail. Exit 2 means the date or a
+   filename is wrong, or a file in the directory is not named after an email
+   address. Fix it before finishing.
+
+`send_config.yaml` is not consulted in this mode. The filenames in the
+directory decide who is written to, so an address that is missing a `.html`
+simply does not get mail.
 
 ## When a run finds nothing new
 
