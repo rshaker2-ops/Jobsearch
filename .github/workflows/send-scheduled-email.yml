@@ -3,6 +3,12 @@ name: Send scheduled email
 # Monday and Thursday at 13:00 UTC. That is 9am Eastern while daylight saving
 # is in effect and 8am Eastern once it ends, because GitHub cron is always UTC
 # and does not follow local clock changes.
+#
+# The cron is a backstop, not the primary trigger. It has never fired on time:
+# nothing at 13:00 on 24 September and a run at 17:36 instead, no run at all at
+# 13:00 on 28 September and one at 19:52. The sweep run dispatches this workflow
+# itself once its queue is verified, so by the time a late cron arrives the day
+# has usually already been delivered. That is expected and is not a failure.
 on:
   schedule:
     - cron: "0 13 * * 1,4"
@@ -52,8 +58,11 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          # "schedule" for a cron firing, "workflow_dispatch" for a person or
+          # the sweep run pressing the button.
+          TRIGGER: ${{ github.event_name }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           ARGS=""
           if [ "${{ inputs.check_auth }}" = "true" ]; then
             python3 tools/mail/send.py --check-auth
@@ -69,3 +78,27 @@ jobs:
             ARGS="$ARGS --to ${{ inputs.to }}"
           fi
           python3 tools/mail/send.py $ARGS
+          STATUS=$?
+
+          # Exit codes, from tools/mail/send.py:
+          #   0 sent, or dry run / auth check completed
+          #   1 configuration or credential problem
+          #   2 nothing queued for that date
+          #   3 already sent
+          #   4 delivery or git failure
+          #
+          # 2 and 3 both mean "there is nothing to do", which is the normal
+          # outcome for a late cron on a day the sweep run has already
+          # delivered. Failing the job on those turns a working pipeline red
+          # twice a week and trains everyone to ignore the red, which is how a
+          # genuine delivery failure gets missed. A person or the sweep run
+          # pressing the button IS expecting a send, so there they stay
+          # failures.
+          if [ "$STATUS" -eq 2 ] || [ "$STATUS" -eq 3 ]; then
+            if [ "$TRIGGER" = "schedule" ]; then
+              echo "::notice::Nothing to send for this date (exit $STATUS). The scheduled run is a backstop and the day was already handled, so this is not a failure."
+              exit 0
+            fi
+            echo "::error::Nothing was sent (exit $STATUS), and this run was triggered deliberately rather than by cron."
+          fi
+          exit $STATUS
