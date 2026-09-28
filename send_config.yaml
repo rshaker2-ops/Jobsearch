@@ -10,13 +10,17 @@
 # the alias is not verified.
 sender: rshaker2@gmail.com
 
-# Everyone on this list receives every send, on the To: line.
+# Used only by the broadcast layout, where everyone on this list receives the
+# same message on one To: line. The per-recipient layout ignores it entirely and
+# takes its addresses from the filenames in outbox/<date>/ instead. Kept in step
+# with tools/sweep/profiles.json, which CI enforces.
 recipients:
   - rshaker2@gmail.com
   - edanmejias@gmail.com
   - robertshaker3@gmail.com
   - jgordonwalton@gmail.com
+  - jonnydb86@gmail.com
 
 # Subject line. {date} is replaced with the send date as YYYY-MM-DD, and
 # {date_long} with a readable form such as "22 September 2026".
-subject: "Role sweep, {date_long}"
+subject: "Recruiting report, {date_long}"
