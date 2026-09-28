@@ -134,5 +134,37 @@ jobs:
           print(f"ok: {checked} per-recipient bodies, all addressed to known profiles")
           EOF
 
+      - name: Each ActiveState narrative names one profile and only its owner
+        run: |
+          python3 - <<'EOF'
+          import sys
+          sys.path.insert(0, "tools/sweep")
+          from pathlib import Path
+          import run
+          # These files are rendered into a candidate's document and were
+          # emailed to them individually. A name from another candidate landing
+          # in one is the same leak the per-recipient sender exists to prevent,
+          # and it would reach an interview rather than an inbox.
+          folder = Path("tools/sweep/narratives")
+          files = sorted(folder.glob("*.md")) if folder.is_dir() else []
+          for path in files:
+              owner = path.stem
+              assert owner in run.PROFILES, (
+                  f"{path} names no profile, so nothing would ever render it. "
+                  f"Known: {sorted(run.PROFILES)}"
+              )
+              body = path.read_text()
+              for key, profile in run.PROFILES.items():
+                  if key == owner:
+                      continue
+                  for token in (key, profile["email"], profile["folder"]):
+                      assert token not in body, (
+                          f"{path} belongs to {owner} but mentions {token!r}, "
+                          f"which is {key}'s. One person's narrative must never "
+                          f"reach another person's document."
+                      )
+          print(f"ok: {len(files)} narratives, each naming only its own owner")
+          EOF
+
       - name: No em dashes anywhere in the repository
         run: python3 tools/check_no_em_dashes.py
