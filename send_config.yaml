@@ -23,4 +23,4 @@ recipients:
 
 # Subject line. {date} is replaced with the send date as YYYY-MM-DD, and
 # {date_long} with a readable form such as "22 September 2026".
-subject: "Recruiting report, {date_long}"
+subject: "Your personalized job market analysis from Bob, {date_long}"

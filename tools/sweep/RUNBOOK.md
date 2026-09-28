@@ -6,7 +6,8 @@ of the last run. Everything needed is in this repo.
 ## What it produces
 
 Five Word documents, one per candidate. Each candidate is emailed their own
-document and nobody else's, under the subject "Recruiting report".
+document and nobody else's, under the subject "Your personalized job
+market analysis from Bob".
 
 | Candidate | Folder | Email | Lane |
 |---|---|---|---|
