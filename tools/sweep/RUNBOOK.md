@@ -5,8 +5,8 @@ of the last run. Everything needed is in this repo.
 
 ## What it produces
 
-Four Word documents, one per candidate. Each candidate is emailed their own
-document and nobody else's.
+Five Word documents, one per candidate. Each candidate is emailed their own
+document and nobody else's, under the subject "Recruiting report".
 
 | Candidate | Folder | Email | Lane |
 |---|---|---|---|
@@ -14,6 +14,7 @@ document and nobody else's.
 | Edan Mejias | `Edan/` | edanmejias@gmail.com | Senior / technical PM and PMM |
 | Robert J. Shaker (Robbie) | `Robbie/` | robertshaker3@gmail.com | Information security and GRC analyst |
 | Jeffrey G. Walton (Jeff) | `Jeff/` | jgordonwalton@gmail.com | Customer success, onboarding, enablement |
+| Jonathan Rivera (Jonny) | `Jonny/` | jonnydb86@gmail.com | Director to VP Product, platform transformation |
 
 **One document per person, to that person only.** On 24 Sep 2026 a single
 broadcast put all four addresses on one To: line and attached all four
@@ -33,6 +34,7 @@ python3 tools/sweep/run.py bob    /tmp/sweep
 python3 tools/sweep/run.py edan   /tmp/sweep
 python3 tools/sweep/run.py robbie /tmp/sweep
 python3 tools/sweep/run.py jeff   /tmp/sweep
+python3 tools/sweep/run.py jonny  /tmp/sweep
 ```
 
 Roughly 8 to 12 minutes each; LinkedIn is rate limited and the script sleeps
@@ -50,6 +52,17 @@ there, never in the scripts.
 **Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
 location, remote or on-site, so say where a role actually sits rather than
 assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
+
+Jonny is in Tampa and open to remote anywhere in the United States, so he keeps
+any US location like the others. His distinctive credential is platform
+transformation: taking companies off legacy products onto new ones, which he has
+done at three of four employers, plus a gross revenue retention turnaround from
+roughly 65 to 87 percent across a $50M to $150M ARR portfolio. His blocking
+problem, found in the 11 September resume audit, is that nine of sixteen target
+roles gate on years spent managing product people and his Malwarebytes headcount
+is written as a cross-functional team of 15, which does not say whether they
+reported to him. Treat a people-leadership minimum above five years as a caveat
+to name rather than a silent rule-out, and quote the line.
 
 Jeff is `remote-only` and that is a hard constraint, not a preference. He is in
 McKinleyville, Humboldt County, which has no technology employment market at
@@ -169,15 +182,34 @@ What this step owes it is a queued email:
    The .docx still go through the PR for review; the queued copies are
    delivery artifacts.
 5. Verify with `python3 tools/mail/send.py --dry-run`. It must exit 0, report
-   `mode  per recipient, 4 message(s)`, and show exactly one attachment under
-   each address. If it reports `broadcast`, the directory is named wrong and
-   everybody is about to get everybody else's mail. Exit 2 means the date or a
-   filename is wrong, or a file in the directory is not named after an email
-   address. Fix it before finishing.
+   `mode  per recipient, 5 message(s)`, one per profile,
+   and show exactly one attachment under each address. If it reports
+   `broadcast`, the directory is named wrong and everybody is about to get
+   everybody else's mail. Exit 2 means the date or a filename is wrong, or a
+   file in the directory is not named after an email address. Fix it before
+   finishing.
+6. **Dispatch the send workflow yourself. Do not wait for 13:00 UTC.** Once the
+   queue is on `main` and the dry run is clean, trigger
+   `send-scheduled-email.yml` against `main`. Then confirm it succeeded and
+   that a `Sent <date>` commit landed on `main`.
 
 `send_config.yaml` is not consulted in this mode. The filenames in the
 directory decide who is written to, so an address that is missing a `.html`
 simply does not get mail.
+
+### Why the run dispatches its own send
+
+GitHub's `schedule` cron has never once fired this workflow on time. On 24
+September it produced nothing at 13:00 and fired at 17:36, four and a half
+hours late, by which point the day had been sent by hand. On 28 September it
+produced no scheduled run at all. Both sends happened only because somebody
+was awake and pressed the button.
+
+Dispatching from this run removes that dependency. The cron line stays in the
+workflow as a backstop, and a late firing is harmless: the sender refuses a
+date that already exists in `sent/`, which is exactly what happened on 24
+September. The failure mode being designed out is silence, where nobody
+receives anything and nobody finds out until someone asks.
 
 ## When a run finds nothing new
 
