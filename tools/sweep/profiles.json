@@ -69,7 +69,7 @@
   "name": "Robert J. Shaker",
   "folder": "Robbie",
   "email": "robertshaker3@gmail.com",
-  "headline": "Information security and GRC analyst  \u00b7  United States, Boston area prioritised  \u00b7  $94,500 floor",
+  "headline": "GRC and information security analyst  \u00b7  United States, Boston area prioritised  \u00b7  $94,500 floor",
   "floor": 94500,
   "years_experience": 1,
   "locations": [
@@ -77,25 +77,30 @@
    "ma-ri"
   ],
   "linkedin_queries": [
-   "Information Security Analyst",
    "GRC Analyst",
    "Third Party Risk Analyst",
    "Vendor Risk Analyst",
+   "Information Security Analyst",
    "Security Compliance Analyst",
-   "IT Risk Analyst"
+   "IT Compliance Analyst",
+   "Risk and Compliance Analyst",
+   "Third Party Risk Management",
+   "Security Governance Analyst",
+   "Vendor Security Analyst"
   ],
   "workday_queries": [
-   "Information Security Analyst",
    "GRC Analyst",
+   "Third Party Risk",
+   "Vendor Risk",
    "Security Compliance",
-   "Risk Analyst",
-   "Third Party Risk"
+   "Information Security Analyst",
+   "IT Risk and Compliance"
   ],
-  "title_keep": "\\b((information |info|cyber|it )?security analyst|grc analyst|(governance|risk|compliance)[\\w\\s,&]{0,20}analyst|third[- ]party risk|vendor risk|customer trust|trust (and|&) safety analyst|security compliance|compliance analyst|risk analyst|soc analyst|security operations analyst)\\b",
+  "title_keep": "\\b((information |info|cyber|it )?security analyst|grc analyst|(governance|risk|compliance)[\\w\\s,&]{0,20}analyst|third[- ]party risk|vendor risk|vendor security|customer trust|trust (and|&) safety analyst|security compliance|compliance analyst|compliance specialist|risk analyst|security governance|it audit|internal audit|privacy analyst|soc analyst|security operations analyst)\\b",
   "title_scope": "",
   "title_drop": "\\b(engineer|engineering|developer|software|architect|devops|sre|penetration tester|red team|manager|director|senior manager|principal|lead |head of|vp|chief|intern|contract|part[- ]time|unpaid|clearance required|ts/sci|polygraph)\\b",
-  "hard_gate": "\\b(cissp required|active (secret|ts/sci|top secret)|polygraph|clearance required|must (hold|possess) (an? )?(active )?(security )?clearance|proficient in at least one scripting language|scripting language \\(python)\\b",
-  "fit_signal": "\\b(vendor risk|third[- ]party|questionnaire|soc 2|iso 27001|nist|grc|audit|policy|control|compliance)\\b",
+  "hard_gate": "\\b(cissp required|active (secret|ts/sci|top secret)|polygraph|clearance required|must (hold|possess) (an? )?(active )?(security )?clearance|proficient in at least one scripting language|scripting language \\(python|proficiency in (python|powershell|bash|java|c\\+\\+|go|ruby)|(strong |solid |hands[- ]on )?(programming|coding|software development) (experience|skills|background|proficiency)|write (production )?code|develop (and maintain )?(scripts|applications|software)|(python|powershell|bash|java|sql) (scripting|programming|development) required|experience (writing|developing) (scripts|code|software)|secure code review|application security engineer|penetration test(ing)? experience required)\\b",
+  "fit_signal": "\\b(vendor risk|third[- ]party|tprm|questionnaire|soc 2|iso 27001|nist|grc|audit|audit readiness|policy|control|control testing|compliance|evidence|attestation|remediation|risk assessment|risk register|due diligence|ctprp|cisa|crisc|onetrust|archer|vanta|drata|logicgate|processunity|whistic|securityscorecard|privacy|gdpr|hipaa|pci)\\b",
   "drop_seniority": true
  },
  "jeff": {
