@@ -59,10 +59,28 @@ transformation: taking companies off legacy products onto new ones, which he has
 done at three of four employers, plus a gross revenue retention turnaround from
 roughly 65 to 87 percent across a $50M to $150M ARR portfolio. His blocking
 problem, found in the 11 September resume audit, is that nine of sixteen target
-roles gate on years spent managing product people and his Malwarebytes headcount
-is written as a cross-functional team of 15, which does not say whether they
-reported to him. Treat a people-leadership minimum above five years as a caveat
-to name rather than a silent rule-out, and quote the line.
+roles gate on years spent managing product people.
+
+**The headcount is settled, as of 28 September.** At Malwarebytes he had three
+direct reports and led a fifteen-person cross-functional team. Bob confirmed it.
+The resume currently says only "cross-functional team of 15", which is the worst
+of both readings: a generous recruiter infers fifteen reports, a careful one
+infers none.
+
+Two different things follow from that, and the distinction decides how a role is
+scored:
+
+- **A people-management minimum is answerable.** "4+ years in a people management
+  role" or "experience managing product managers" is a yes. He has managed people
+  and can say so with a number. Do not rule these out.
+- **A scale requirement is not.** "Lead and scale teams of product managers",
+  "grow a product organisation", or any posting implying a double-digit direct
+  team, reads three reports as small. That is a caveat to name and quote, not a
+  silent rule-out, and not something to paper over either.
+
+The fifteen is real leadership and worth stating, but it is influence across
+functions rather than reporting lines, and a recruiter screening on headcount
+reads those differently. Say which one a posting is asking for.
 
 Jeff is `remote-only` and that is a hard constraint, not a preference. He is in
 McKinleyville, Humboldt County, which has no technology employment market at
