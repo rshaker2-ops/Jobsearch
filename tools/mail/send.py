@@ -378,10 +378,13 @@ def main():
 
     # Refuse to send the same day twice. This is the guard that makes a manual
     # workflow_dispatch safe to press after a scheduled run has already gone.
-    if delivered.exists() or delivered_dir.exists():
-        already = delivered if delivered.exists() else delivered_dir
+    # A broadcast is one message to everybody, so there is no partial version of
+    # it and the whole date is refused. A per-recipient send is checked address
+    # by address further down instead: adding a candidate mid-cycle has to be
+    # able to reach the new person without re-mailing everyone else.
+    if delivered.exists():
         print(
-            f"error: {already.relative_to(REPO)} already exists, so "
+            f"error: {delivered.relative_to(REPO)} already exists, so "
             f"{stamp} has been sent. Nothing to do.",
             file=sys.stderr,
         )
@@ -409,14 +412,40 @@ def main():
         # One message per recipient. Nobody receives anybody else's body or
         # attachments, and nobody sees anybody else's address.
         mode = "per recipient"
-        plan = []
+        # Anyone already filed under sent/<date>/ has had this date's mail and
+        # is skipped rather than mailed twice.
+        already = set()
+        if delivered_dir.is_dir():
+            already = {item.stem for item in delivered_dir.glob("*.html")}
+        plan, sending, skipped = [], [], []
         for address, html_path, attachments in jobs:
+            if address in already:
+                skipped.append(address)
+                continue
             html = html_path.read_text(encoding="utf-8")
             if not html.strip():
                 print(f"error: {html_path.relative_to(REPO)} is empty", file=sys.stderr)
                 return 2
             plan.append(([address], html, attachments, html_path))
-        moves = [(queued_dir, delivered_dir)]
+            sending.append((address, html_path))
+        if not plan:
+            print(
+                f"error: every address queued for {stamp} is already filed in "
+                f"{delivered_dir.relative_to(REPO)}. Nothing to do.",
+                file=sys.stderr,
+            )
+            return 3
+        if already:
+            # Filing into a directory that already holds a delivered send, so
+            # move the new files in one at a time rather than the whole box.
+            moves = []
+            for address, html_path in sending:
+                moves.append((html_path, delivered_dir / html_path.name))
+                att_dir = queued_dir / f"{address}{ATTACH_SUFFIX}"
+                if att_dir.is_dir():
+                    moves.append((att_dir, delivered_dir / att_dir.name))
+        else:
+            moves = [(queued_dir, delivered_dir)]
     else:
         if not queued.is_file():
             print(
@@ -432,6 +461,7 @@ def main():
             print(f"error: {queued.relative_to(REPO)} is empty", file=sys.stderr)
             return 2
         mode = "broadcast"
+        skipped = []
         attachments = collect_attachments(queued_files)
         plan = [(list(recipients), html, attachments, queued)]
         moves = [(queued, delivered)]
@@ -460,6 +490,8 @@ def main():
 
     print(f"date      {stamp} ({TZ_NAME})")
     print(f"mode      {mode}, {len(plan)} message(s)")
+    if mode == "per recipient" and skipped:
+        print(f"skipped   {', '.join(sorted(skipped))} (already sent {stamp})")
     print(f"subject   {subject}")
     print(f"from      {sender}")
     for addrs, html, attachments, src in plan:
@@ -513,6 +545,8 @@ def main():
     # so git problems are reported loudly but the mail is already gone.
     try:
         SENT.mkdir(exist_ok=True)
+        if mode == "per recipient":
+            delivered_dir.mkdir(exist_ok=True)
         for src, dst in moves:
             git("mv", str(src.relative_to(REPO)), str(dst.relative_to(REPO)))
         git("config", "user.name", os.environ.get("GIT_AUTHOR_NAME", "github-actions[bot]"))
