@@ -34,11 +34,24 @@ jobs:
       - name: Every profile resolves and the sweep is runnable
         run: |
           python3 - <<'EOF'
-          import sys
+          import re, sys
           sys.path.insert(0, "tools/sweep")
           import run
           for key, profile in run.PROFILES.items():
               queries = len(profile["linkedin_queries"]) + len(profile["workday_queries"])
+              # Every pattern must compile, and fit_signal must expose exactly one
+              # group: run.py calls FIT.findall(), and a nested capturing group
+              # makes that return tuples instead of strings. Jonny's profile did
+              # that on 28 September and killed the sweep after eight queries.
+              for field in ("title_keep", "title_scope", "title_drop", "hard_gate", "fit_signal"):
+                  re.compile(profile[field])
+              groups = re.compile(profile["fit_signal"]).groups
+              assert groups == 1, (
+                  f"{key}: fit_signal has {groups} capturing groups, needs exactly 1. "
+                  f"Make inner alternations non-capturing with (?:...)."
+              )
+              sample = re.compile(profile["fit_signal"]).findall("roadmap and product strategy")
+              assert all(isinstance(x, str) for x in sample), f"{key}: findall returns tuples"
               print(f"ok: {key:7s} {profile['email']:26s} {queries} queries, floor ${profile['floor']:,}")
           EOF
 

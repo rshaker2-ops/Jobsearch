@@ -160,7 +160,7 @@
   "title_scope": "\\b(product|platform)\\b",
   "title_drop": "\\b(engineering|engineer|design|ux|research|marketing|content|brand|data scien|analytics|support|enablement|partnership|alliance|communications|recruit|people|finance|legal|sales|revenue|information security|product security|application security|security operations|ciso|cfo|cmo|chro|cro|chief|svp|evp|executive vice president|staff|principal|manager|associate|analyst|intern|assistant|deputy|chief of staff|field|fractional|co-?founder|equity only|unpaid|volunteer|contract)\\b",
   "hard_gate": "\\b(expert[- ]level proficiency|proficiency in (java|python|go|c\\+\\+)|hands[- ]on (coding|programming)|write (production )?code|writes code daily|system design|distributed systems (design|architecture)|site reliability|kubernetes|terraform|active (security )?clearance|ts/sci)\\b",
-  "fit_signal": "\\b(platform consolidat|legacy (platform|migration|modernis|moderniz)|product[- ]led|retention|gross revenue retention|grr|net revenue retention|nrr|churn|0 to 1|zero to one|roadmap|product strategy|product operating model|b2b2c|msp|managed service provider|channel|pharmacy|healthcare|developer tooling|platform strategy|hiring and developing|cross[- ]functional leadership)\\b",
+  "fit_signal": "\\b(platform consolidat|legacy (?:platform|migration|modernis|moderniz)|product[- ]led|retention|gross revenue retention|grr|net revenue retention|nrr|churn|0 to 1|zero to one|roadmap|product strategy|product operating model|b2b2c|msp|managed service provider|channel|pharmacy|healthcare|developer tooling|platform strategy|hiring and developing|cross[- ]functional leadership)\\b",
   "drop_seniority": false
  }
 }

@@ -366,10 +366,64 @@ class PerRecipientTestCase(unittest.TestCase):
             self.moves, [(f"outbox/{FIXTURE_DATE}", f"sent/{FIXTURE_DATE}")]
         )
 
-    def test_already_sent_directory_exits_three_and_sends_nothing(self):
-        (REPO / "sent" / FIXTURE_DATE).mkdir(parents=True, exist_ok=True)
+    def test_every_address_already_filed_exits_three_and_sends_nothing(self):
+        done = REPO / "sent" / FIXTURE_DATE
+        done.mkdir(parents=True, exist_ok=True)
+        for address in self.ADDRESSES:
+            (done / f"{address}.html").write_text("<p>sent</p>", encoding="utf-8")
         self.assertEqual(self._run(), 3)
         self.assertEqual(self._sent(), [])
+
+    def test_an_empty_sent_directory_does_not_block(self):
+        """Nobody filed means nobody has had this date's mail."""
+        (REPO / "sent" / FIXTURE_DATE).mkdir(parents=True, exist_ok=True)
+        self.assertEqual(self._run(), 0)
+        self.assertEqual(len(self._sent()), len(self.ADDRESSES))
+
+    # -- adding a candidate mid-cycle --------------------------------------
+
+    def test_a_new_address_is_sent_while_the_others_are_skipped(self):
+        """
+        The case this exists for: four people got the day's mail, a fifth is
+        added the same day. The fifth must be reachable and the four must not
+        be mailed twice.
+        """
+        done = REPO / "sent" / FIXTURE_DATE
+        done.mkdir(parents=True, exist_ok=True)
+        for address in self.ADDRESSES[:-1]:
+            (done / f"{address}.html").write_text("<p>sent</p>", encoding="utf-8")
+        latecomer = self.ADDRESSES[-1]
+        self.assertEqual(self._run(), 0)
+        sent = self._sent()
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0][1], [latecomer])
+
+    def test_the_latecomers_files_move_into_the_existing_sent_directory(self):
+        done = REPO / "sent" / FIXTURE_DATE
+        done.mkdir(parents=True, exist_ok=True)
+        for address in self.ADDRESSES[:-1]:
+            (done / f"{address}.html").write_text("<p>sent</p>", encoding="utf-8")
+        latecomer = self.ADDRESSES[-1]
+        self._run()
+        moved = dict(self.moves)
+        self.assertIn(f"outbox/{FIXTURE_DATE}/{latecomer}.html", moved)
+        self.assertEqual(
+            moved[f"outbox/{FIXTURE_DATE}/{latecomer}.html"],
+            f"sent/{FIXTURE_DATE}/{latecomer}.html",
+        )
+        self.assertIn(f"outbox/{FIXTURE_DATE}/{latecomer}.files", moved)
+        # The whole outbox directory must NOT be moved on top of a sent one.
+        self.assertNotIn(f"outbox/{FIXTURE_DATE}", moved)
+
+    def test_an_already_sent_address_is_never_mailed_twice(self):
+        done = REPO / "sent" / FIXTURE_DATE
+        done.mkdir(parents=True, exist_ok=True)
+        repeat = self.ADDRESSES[0]
+        (done / f"{repeat}.html").write_text("<p>sent</p>", encoding="utf-8")
+        self._run()
+        addressed = {to[0] for _, to in self._sent()}
+        self.assertNotIn(repeat, addressed)
+        self.assertEqual(addressed, set(self.ADDRESSES[1:]))
 
     # -- refusals ----------------------------------------------------------
 
