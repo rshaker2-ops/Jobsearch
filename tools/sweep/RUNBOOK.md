@@ -114,6 +114,22 @@ betting on a new architecture" does not trip it.
 location, remote or on-site, so say where a role actually sits rather than
 assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
 
+**Robbie is rewriting his own resume, as of 29 September.** Do not offer to do
+it for him; the 29 September document did, and he has taken it on. The problem
+it fixes is real and worth restating once he has: his resume carried a single
+dated line, ActiveState 2025 to Present, so a reader subtracted to eighteen
+months and never reached the 95 vendor assessments or the eight consecutive
+months at 100% compliance behind it. Bob confirmed ActiveState had him doing a
+much more senior person's job.
+
+Two things follow. The targeting stands regardless of the rewrite: aim at roles
+asking four years rather than five or six, because a one-year gap is arguable
+and a two-year gap is not, and a resume edit does not change what a posting
+requires. And when he sends a new version, read it and say whether the fix
+actually landed. A self-edit can correctly date the role and still bury the
+volume in paragraph four, which leaves the reader doing the same subtraction.
+Offering to review the new version is useful; offering to write it again is not.
+
 Jonny is in Tampa and open to remote anywhere in the United States, so he keeps
 any US location like the others. His distinctive credential is platform
 transformation: taking companies off legacy products onto new ones, which he has
@@ -121,6 +137,11 @@ done at three of four employers, plus a gross revenue retention turnaround from
 roughly 65 to 87 percent across a $50M to $150M ARR portfolio. His blocking
 problem, found in the 11 September resume audit, is that nine of sixteen target
 roles gate on years spent managing product people.
+
+**His floor and level are settled, as of 29 September.** $200,000 base, Director
+through VP Product. Bob confirmed both. Stop asking him to check them: the
+documents did on 28 and 29 September and the question is now answered. Treat the
+figures in `profiles.json` as decided, like every other floor.
 
 **The headcount is settled, as of 28 September.** At Malwarebytes he had three
 direct reports and led a fifteen-person cross-functional team. Bob confirmed it.
