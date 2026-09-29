@@ -203,6 +203,28 @@ def sweep(key, outdir):
             and (not S or S.search(r["title"]))]
     stats["after_title"] = len(rows)
 
+    # ---- declined and excluded --------------------------------------------
+    # Two different facts, both permanent, both belonging to the candidate
+    # rather than to any one run:
+    #
+    #   company_block   an employer who has already said no, or who the
+    #                   candidate will not work for. Re-presenting one is
+    #                   worse than useless: it tells the reader the list was
+    #                   not filtered by anyone paying attention.
+    #   industry_block  a sector the candidate rules out on principle. Matched
+    #                   against the posting's own text rather than the company
+    #                   name, because the name rarely says it.
+    #
+    # Both remove the role rather than demote it, and both are counted so the
+    # write-up can say what was dropped. A silent filter that eats a good role
+    # is worse than no filter at all.
+    blocked = {c.lower().strip() for c in p.get("company_block", [])}
+    if blocked:
+        before = len(rows)
+        rows = [r for r in rows
+                if (r.get("company") or "").lower().strip() not in blocked]
+        stats["company_blocked"] = before - len(rows)
+
     # ---- location and seniority ------------------------------------------
     rows = [
         r for r in rows
@@ -240,6 +262,17 @@ def sweep(key, outdir):
         if i % 20 == 0:
             print(f"  read {i}/{len(rows)}", file=sys.stderr, flush=True)
     stats["read"] = len(out)
+
+    if p.get("industry_block"):
+        IND = re.compile(p["industry_block"], re.I)
+        kept, dropped = [], []
+        for r in out:
+            (dropped if IND.search(r["desc"]) else kept).append(r)
+        stats["industry_blocked"] = len(dropped)
+        stats["industry_blocked_names"] = sorted(
+            {f"{r.get('company') or '?'}: {r['title']}" for r in dropped})
+        out = kept
+
     stats["new_today"] = mark_seen(key, out, time.strftime("%Y-%m-%d"))
     stats["publish_a_band"] = sum(1 for r in out if r["money"])
     stats["clear_floor"] = sum(1 for r in out if r["clears_floor"])
