@@ -310,5 +310,50 @@ class SeenTestCase(unittest.TestCase):
         self.assertEqual(run.mark_seen("bob", roles, "2026-10-01"), 1)
 
 
+class ExclusionTestCase(unittest.TestCase):
+    """Companies who said no, and sectors the candidate rules out.
+
+    Both are permanent facts about the candidate. Bob was turned down by IDIQ
+    on 29 September and does not work for gambling companies; putting either
+    back in front of him says nobody read the list.
+    """
+
+    def test_bobs_blocks_are_configured(self):
+        b = run.PROFILES["bob"]
+        self.assertIn("IDIQ", b["company_block"])
+        self.assertTrue(b["industry_block"])
+
+    def test_the_industry_pattern_catches_a_real_posting(self):
+        # Every one of these came out of FanDuel's own posting text on
+        # 29 September. The company name alone would never have caught it.
+        pat = re.compile(run.PROFILES["bob"]["industry_block"], re.I)
+        for phrase in ("our Sportsbook product", "sports betting and iGaming",
+                       "Casino vertical", "responsible gaming safeguards",
+                       "wagering flows"):
+            self.assertTrue(pat.search(phrase), phrase)
+
+    def test_the_industry_pattern_leaves_ordinary_postings_alone(self):
+        pat = re.compile(run.PROFILES["bob"]["industry_block"], re.I)
+        for phrase in ("enterprise SaaS platform", "developer tooling",
+                       "we are betting on a new architecture",
+                       "identity and access management",
+                       "a game-changing product"):
+            self.assertIsNone(pat.search(phrase), phrase)
+
+    def test_company_block_matching_ignores_case_and_padding(self):
+        blocked = {c.lower().strip() for c in run.PROFILES["bob"]["company_block"]}
+        for spelling in ("IDIQ", "idiq", "  IdIq  "):
+            self.assertIn(spelling.lower().strip(), blocked)
+
+    def test_only_bob_carries_these_blocks(self):
+        # A rejection is one person's fact. Applying Bob's to everybody would
+        # silently shrink four other people's lists.
+        for key, prof in run.PROFILES.items():
+            if key == "bob":
+                continue
+            self.assertFalse(prof.get("company_block"), key)
+            self.assertFalse(prof.get("industry_block"), key)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

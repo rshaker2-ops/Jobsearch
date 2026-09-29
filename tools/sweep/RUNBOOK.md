@@ -86,6 +86,30 @@ stated anywhere in the posting.
 Criteria live in `tools/sweep/profiles.json`. Change a floor or a search term
 there, never in the scripts.
 
+### Rejections and sectors a candidate rules out
+
+Two optional profile fields, both permanent facts about the person rather than
+about any one run:
+
+- `company_block`, a list of employer names. Someone who has already said no,
+  or who the candidate will not work for. Matched on the company name, case
+  and padding insensitive.
+- `industry_block`, a regex matched against the posting's own text rather than
+  the company name, because the name almost never says it.
+
+Both remove the role rather than demote it, and both are counted into `stats`
+as `company_blocked` and `industry_blocked`, with `industry_blocked_names`
+listing what went. **Say in the document what was dropped and why.** A silent
+filter that eats a good role is worse than no filter, and the only way the
+candidate can correct a bad rule is to see it fire.
+
+As of 29 September 2026 only Bob carries either: IDIQ turned him down that day,
+and he does not work for gambling companies. The industry pattern is written
+against the terms that actually appeared in a real posting (sportsbook,
+sports betting, iGaming, casino, wagering, responsible gaming) rather than
+guessed, and it is tested against ordinary postings so that a line like "we are
+betting on a new architecture" does not trip it.
+
 **Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
 location, remote or on-site, so say where a role actually sits rather than
 assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
