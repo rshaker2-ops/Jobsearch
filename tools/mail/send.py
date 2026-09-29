@@ -375,6 +375,7 @@ def main():
     delivered_files = SENT / f"{stamp}{ATTACH_SUFFIX}"
     queued_dir = OUTBOX / stamp
     delivered_dir = SENT / stamp
+    file_by_file = False
 
     # Refuse to send the same day twice. This is the guard that makes a manual
     # workflow_dispatch safe to press after a scheduled run has already gone.
@@ -438,6 +439,8 @@ def main():
         if already:
             # Filing into a directory that already holds a delivered send, so
             # move the new files in one at a time rather than the whole box.
+            # The box itself has to exist first for that to work.
+            file_by_file = True
             moves = []
             for address, html_path in sending:
                 moves.append((html_path, delivered_dir / html_path.name))
@@ -445,6 +448,14 @@ def main():
                 if att_dir.is_dir():
                     moves.append((att_dir, delivered_dir / att_dir.name))
         else:
+            # Renaming outbox/<date> to sent/<date> wholesale. sent/<date> must
+            # NOT exist: git mv into an existing directory moves the source
+            # INSIDE it, which on 29 September produced
+            # sent/2026-09-29/2026-09-29/ and broke the already-sent guard,
+            # because that guard looks for *.html one level up from where the
+            # files landed. The mail had already gone; a re-run would have sent
+            # it again.
+            file_by_file = False
             moves = [(queued_dir, delivered_dir)]
     else:
         if not queued.is_file():
@@ -545,7 +556,7 @@ def main():
     # so git problems are reported loudly but the mail is already gone.
     try:
         SENT.mkdir(exist_ok=True)
-        if mode == "per recipient":
+        if mode == "per recipient" and file_by_file:
             delivered_dir.mkdir(exist_ok=True)
         for src, dst in moves:
             git("mv", str(src.relative_to(REPO)), str(dst.relative_to(REPO)))

@@ -475,6 +475,87 @@ class PerRecipientTestCase(unittest.TestCase):
         self.assertTrue(self.dir.is_dir())
 
 
+class FilingShapeTestCase(unittest.TestCase):
+    """The 29 September archive bug.
+
+    Five messages went out correctly and then filed into
+    sent/2026-09-29/2026-09-29/ instead of sent/2026-09-29/. git mv into a
+    directory that already exists moves the source INSIDE it, and the code
+    created sent/<date>/ unconditionally just before issuing that move.
+
+    The consequence was not cosmetic. The already-sent guard looks for *.html
+    directly under sent/<date>/, so it found none, and a re-run would have
+    mailed all five people a second time.
+
+    It survived 28 September because that day took the file-by-file branch
+    (Jonny was added mid-cycle, so some addresses were already filed). The
+    whole-directory branch had never run with that mkdir in place.
+    """
+
+    ADDRESSES = ("alpha@example.com", "beta@example.com")
+
+    def setUp(self):
+        self.dir = REPO / "outbox" / FIXTURE_DATE
+        self.dir.mkdir(parents=True, exist_ok=True)
+        for address in self.ADDRESSES:
+            (self.dir / f"{address}.html").write_text(
+                f"<!doctype html><html><body><p>For {address}.</p></body></html>",
+                encoding="utf-8")
+            files = self.dir / f"{address}.files"
+            files.mkdir(exist_ok=True)
+            (files / "doc.docx").write_bytes(minimal_docx())
+        self.captured = {}
+        self.moves = []
+        self._real_smtp = send.smtplib
+        self._real_git = send.git
+        send.smtplib = types.SimpleNamespace(
+            SMTP_SSL=SenderTestCase._fake_smtp(self), SMTPAuthenticationError=Exception)
+        send.git = self._fake_git
+        os.environ["GMAIL_USER"] = "fixture@gmail.com"
+        os.environ["GMAIL_APP_PASSWORD"] = "fixture-password"
+
+    def tearDown(self):
+        send.smtplib = self._real_smtp
+        send.git = self._real_git
+        for path in (self.dir, REPO / "sent" / FIXTURE_DATE):
+            if path.exists():
+                shutil.rmtree(path)
+
+    def _fake_git(self, *args, **kwargs):
+        # Record whether the destination existed AT THE MOMENT of the move,
+        # which is the precondition git mv actually cares about.
+        if args and args[0] == "mv":
+            self.moves.append((args[1], args[2], (REPO / args[2]).exists()))
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def _run(self, *extra):
+        sys.argv = ["send.py", "--date", FIXTURE_DATE, *extra]
+        return send.main()
+
+    def test_whole_directory_move_does_not_target_an_existing_directory(self):
+        self.assertEqual(self._run(), 0)
+        whole = [m for m in self.moves if m[1] == f"sent/{FIXTURE_DATE}"]
+        self.assertEqual(len(whole), 1, f"expected one whole-directory move, got {self.moves}")
+        src, dst, existed = whole[0]
+        self.assertEqual(src, f"outbox/{FIXTURE_DATE}")
+        self.assertFalse(
+            existed,
+            "sent/<date>/ existed before the whole-directory move, so git mv would "
+            "nest the queue inside it and the already-sent guard would stop working")
+
+    def test_filing_alongside_an_existing_send_still_creates_the_directory(self):
+        # The other branch: one address already filed, so the rest are moved in
+        # one at a time and the destination directory does have to exist first.
+        delivered = REPO / "sent" / FIXTURE_DATE
+        delivered.mkdir(parents=True, exist_ok=True)
+        (delivered / "alpha@example.com.html").write_text("<html></html>", encoding="utf-8")
+        self.assertEqual(self._run(), 0)
+        dsts = [m[1] for m in self.moves]
+        self.assertIn(f"sent/{FIXTURE_DATE}/beta@example.com.html", dsts)
+        self.assertNotIn(f"sent/{FIXTURE_DATE}", dsts)
+        self.assertTrue(delivered.is_dir())
+
+
 class ConfigTestCase(unittest.TestCase):
     def test_reads_the_real_config(self):
         cfg = send.read_config(REPO / "send_config.yaml")
