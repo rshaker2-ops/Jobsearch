@@ -269,8 +269,16 @@ def sweep(key, outdir):
         for r in out:
             (dropped if IND.search(r["desc"]) else kept).append(r)
         stats["industry_blocked"] = len(dropped)
-        stats["industry_blocked_names"] = sorted(
-            {f"{r.get('company') or '?'}: {r['title']}" for r in dropped})
+        # Keep enough of each excluded role to write it up properly. Dropping
+        # them to a name cost a link on 29 September: Bob's document listed
+        # IDIQ and FanDuel as removed, and by then their URLs had been thrown
+        # away, so he could not check the call. An exclusion he cannot verify
+        # is one he cannot overrule.
+        stats["industry_blocked_roles"] = [
+            {"company": r.get("company"), "title": r["title"],
+             "url": r.get("url"), "loc": r.get("loc"),
+             "band_low": r.get("band_low"), "band_high": r.get("band_high")}
+            for r in dropped]
         out = kept
 
     stats["new_today"] = mark_seen(key, out, time.strftime("%Y-%m-%d"))

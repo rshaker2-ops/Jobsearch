@@ -17,7 +17,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { Document, Packer, Paragraph, TextRun, PageBreak, BorderStyle, HeadingLevel } = require("docx");
+const { Document, Packer, Paragraph, TextRun, PageBreak, BorderStyle, HeadingLevel, ExternalHyperlink } = require("docx");
 const { make, pageProps, numbering, styles, SERIF, SANS, MONO } = require("./lib");
 
 const F = { ink:"15171C", ink2:"4B4F59", ink3:"7F838D", accent:"1F4E63", warn:"8A6A16",
@@ -50,7 +50,7 @@ function card({ n, title, org, band, loc, posted, verdict, tone, why, against, q
   return out;
 }
 
-function ruled({ title, org, band, reason, quotes }) {
+function ruled({ title, org, band, reason, quotes, link }) {
   const side = { left:{style:BorderStyle.SINGLE,size:18,color:F.bad,space:10} };
   const out = [
     P({spacing:{before:240,after:0},border:side,indent:{left:120},children:[
@@ -62,6 +62,9 @@ function ruled({ title, org, band, reason, quotes }) {
   ];
   (quotes||[]).forEach(q=>out.push(P({spacing:{before:0,after:60},indent:{left:320},
     children:[run("“"+q+"”",{size:18,color:F.ink3,italics:true})]})));
+  // A rule-out needs its link more than a recommendation does: it is the only
+  // way the reader can check the call rather than take my word for it.
+  if (link) out.push(linkLine([link],{indent:{left:120},border:side,prefix:"CHECK ME   "}));
   return out;
 }
 
@@ -87,6 +90,34 @@ function narrative(file) {
 }
 
 const spec = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+
+/* Every named role has to carry a link to the posting.
+ *
+ * The 22 September documents had them. The 28th and 29th did not, because the
+ * spec simply stopped supplying them and nothing noticed: the scored JSON
+ * carries a url on every single role, and the card helper has always accepted
+ * one. Two runs went out where the reader could see a quoted requirement and a
+ * band but had no way to open the job. That is most of the value of the
+ * document gone, silently.
+ *
+ * So it is an error rather than a warning. A missing link now stops the build. */
+const missing = [];
+(spec.tier1 || []).forEach(c => { if (!c.link) missing.push(`tier1: ${c.org} ${c.title}`); });
+/* A ruled-out role may legitimately have no link, but only when the spec says
+ * so with an explicit null. Leaving the key out is the omission this guard
+ * exists to catch; writing null is a decision somebody made on purpose. */
+(spec.ruledOut || []).forEach(r => {
+  if (!("link" in r)) missing.push(`ruledOut: ${r.org} ${r.title}`);
+});
+((spec.tier2 || {}).rows || []).forEach(r => {
+  if (!Array.isArray(r) && !r.link) missing.push(`tier2: ${(r.cells || [])[0]}`);
+});
+if (missing.length) {
+  console.error(`${spec.out}: ${missing.length} named role(s) with no link to the posting:`);
+  missing.forEach(m => console.error(`  ${m}`));
+  process.exit(1);
+}
+
 const kids = [];
 
 // Masthead
@@ -110,7 +141,16 @@ if (spec.tier1 && spec.tier1.length) {
 if (spec.tier2) {
   kids.push(...h1(spec.tier2.title || "Worth a look, with a caveat", "TIER TWO"));
   if (spec.tier2.intro) kids.push(body(spec.tier2.intro));
-  kids.push(table(spec.tier2.cols, spec.tier2.head, spec.tier2.rows));
+  const t2 = spec.tier2.rows.map(r => {
+    if (Array.isArray(r)) return r;
+    const [first, ...rest] = r.cells;
+    return [new ExternalHyperlink({
+      link: r.link,
+      children: [new TextRun({ text: first, font: SANS, size: 19, color: F.accent,
+                               bold: true, underline: {} })],
+    }), ...rest];
+  });
+  kids.push(table(spec.tier2.cols, spec.tier2.head, t2));
 }
 if (spec.ruledOut && spec.ruledOut.length) {
   kids.push(...h1(spec.ruledOutTitle || "Ruled out, and the line that did it", "RULE-OUTS"));
