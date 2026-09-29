@@ -1,8 +1,10 @@
 name: Send scheduled email
 
-# Monday and Thursday at 13:00 UTC. That is 9am Eastern while daylight saving
-# is in effect and 8am Eastern once it ends, because GitHub cron is always UTC
-# and does not follow local clock changes.
+# Daily at 13:23 UTC. That is 9:23am Eastern while daylight saving is in effect
+# and 8:23am once it ends, because GitHub cron is always UTC and does not follow
+# local clock changes. Moved off the hour deliberately: every scheduled run of
+# this workflow at :00 has been hours late, and :00 is when GitHub's scheduler
+# is most congested.
 #
 # The cron is a backstop, not the primary trigger. It has never fired on time:
 # nothing at 13:00 on 24 September and a run at 17:36 instead, no run at all at
@@ -11,7 +13,7 @@ name: Send scheduled email
 # has usually already been delivered. That is expected and is not a failure.
 on:
   schedule:
-    - cron: "0 13 * * 1,4"
+    - cron: "23 13 * * *"
   workflow_dispatch:
     inputs:
       check_auth:

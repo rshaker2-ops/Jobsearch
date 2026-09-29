@@ -109,6 +109,45 @@ def loc_ok(loc, p, ats, remote_confirmed=False):
     return bool(REMOTEISH.search(loc))
 
 
+SEEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seen")
+
+
+def role_key(r):
+    """Identity for the seen list.
+
+    The same key the dedupe pass uses, company plus title, rather than the URL.
+    Employers relist a job under a new req id often enough that a URL key would
+    call the same role new every few days.
+    """
+    return f"{(r.get('company') or '').lower().strip()}|{r['title'].lower().strip()}"
+
+
+def mark_seen(key, roles, today):
+    """Stamp every role with the date it first appeared, and persist the list.
+
+    The search window is 30 days, so a daily run returns yesterday's results
+    shifted by one day: about 97 percent of any run is a repeat. Without this
+    the daily document would be almost entirely content the reader has already
+    been sent, and they would stop opening it. The flag is what lets the
+    document lead with what actually changed.
+
+    Marking happens at sweep time rather than at write-up time, so "new" means
+    "not in the previous sweep" rather than "I chose to write about it". Those
+    are different questions and only the first one is a fact.
+    """
+    path = os.path.join(SEEN_DIR, f"{key}.json")
+    try:
+        history = json.load(open(path))
+    except (FileNotFoundError, ValueError):
+        history = {}
+    for r in roles:
+        r["first_seen"] = history.setdefault(role_key(r), today)
+        r["is_new"] = r["first_seen"] == today
+    os.makedirs(SEEN_DIR, exist_ok=True)
+    json.dump(dict(sorted(history.items())), open(path, "w"), indent=1)
+    return sum(1 for r in roles if r["is_new"])
+
+
 def sweep(key, outdir):
     p = PROFILES[key]
     os.makedirs(outdir, exist_ok=True)
@@ -201,6 +240,7 @@ def sweep(key, outdir):
         if i % 20 == 0:
             print(f"  read {i}/{len(rows)}", file=sys.stderr, flush=True)
     stats["read"] = len(out)
+    stats["new_today"] = mark_seen(key, out, time.strftime("%Y-%m-%d"))
     stats["publish_a_band"] = sum(1 for r in out if r["money"])
     stats["clear_floor"] = sum(1 for r in out if r["clears_floor"])
     stats["hard_gated"] = sum(1 for r in out if r["hard_gate"])

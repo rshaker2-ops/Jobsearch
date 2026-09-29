@@ -12,7 +12,9 @@ so a failure means something that once broke is broken again.
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -230,6 +232,82 @@ class YearsTestCase(unittest.TestCase):
         text = "We have been profitable for over 15 years. Bring 3+ years of GRC."
         found = sorted(int(x) for x in run.YEARS.findall(text) if int(x) <= 25)
         self.assertEqual(min(found), 3)
+
+
+class SeenTestCase(unittest.TestCase):
+    """The delta that makes a daily cadence readable.
+
+    The search window is 30 days, so a daily run is 97 percent yesterday's
+    results. If is_new is wrong, every document repeats itself and the whole
+    thing stops being worth opening.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.saved = run.SEEN_DIR
+        run.SEEN_DIR = self.tmp
+
+    def tearDown(self):
+        run.SEEN_DIR = self.saved
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_everything_is_new_on_a_first_run(self):
+        roles = [{"company": "Acme", "title": "Director, Product"}]
+        self.assertEqual(run.mark_seen("bob", roles, "2026-10-01"), 1)
+        self.assertTrue(roles[0]["is_new"])
+        self.assertEqual(roles[0]["first_seen"], "2026-10-01")
+
+    def test_the_same_role_is_not_new_the_next_day(self):
+        first = [{"company": "Acme", "title": "Director, Product"}]
+        run.mark_seen("bob", first, "2026-10-01")
+        second = [{"company": "Acme", "title": "Director, Product"}]
+        self.assertEqual(run.mark_seen("bob", second, "2026-10-02"), 0)
+        self.assertFalse(second[0]["is_new"])
+        # The date it first appeared survives, so the write-up can say how long
+        # a role has been sitting open.
+        self.assertEqual(second[0]["first_seen"], "2026-10-01")
+
+    def test_only_the_genuinely_new_role_counts(self):
+        day_one = [{"company": "Acme", "title": "Director, Product"}]
+        run.mark_seen("bob", day_one, "2026-10-01")
+        day_two = [
+            {"company": "Acme", "title": "Director, Product"},
+            {"company": "Globex", "title": "VP Product"},
+        ]
+        self.assertEqual(run.mark_seen("bob", day_two, "2026-10-02"), 1)
+        self.assertFalse(day_two[0]["is_new"])
+        self.assertTrue(day_two[1]["is_new"])
+
+    def test_a_relist_under_a_new_url_is_not_new(self):
+        # LinkedIn hands the same job a fresh req id regularly. Keying on the
+        # URL would call it new every few days and the reader would see the
+        # same role presented as a fresh find.
+        run.mark_seen("bob", [{"company": "Acme", "title": "Director, Product",
+                               "url": "https://www.linkedin.com/jobs/view/111"}],
+                      "2026-10-01")
+        relisted = [{"company": "Acme", "title": "Director, Product",
+                     "url": "https://www.linkedin.com/jobs/view/999"}]
+        self.assertEqual(run.mark_seen("bob", relisted, "2026-10-02"), 0)
+
+    def test_casing_and_whitespace_do_not_make_a_role_new(self):
+        run.mark_seen("bob", [{"company": "Acme", "title": "Director, Product"}],
+                      "2026-10-01")
+        noisy = [{"company": "  ACME ", "title": "  director, PRODUCT  "}]
+        self.assertEqual(run.mark_seen("bob", noisy, "2026-10-02"), 0)
+
+    def test_each_candidate_keeps_their_own_history(self):
+        # Robbie seeing a role does not mean Edan has seen it. Sharing one file
+        # would silently suppress a role for everyone after the first person.
+        run.mark_seen("robbie", [{"company": "Acme", "title": "GRC Analyst"}],
+                      "2026-10-01")
+        edan = [{"company": "Acme", "title": "GRC Analyst"}]
+        self.assertEqual(run.mark_seen("edan", edan, "2026-10-02"), 1)
+
+    def test_a_corrupt_history_does_not_kill_the_run(self):
+        # Losing a day of delta is a bad document. Crashing is no document.
+        open(os.path.join(self.tmp, "bob.json"), "w").write("{not json")
+        roles = [{"company": "Acme", "title": "Director, Product"}]
+        self.assertEqual(run.mark_seen("bob", roles, "2026-10-01"), 1)
 
 
 if __name__ == "__main__":

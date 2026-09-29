@@ -1,7 +1,43 @@
-# Twice-weekly role sweep
+# Daily role sweep
 
-Runs Monday and Thursday, 07:00 Eastern. Fresh session, clean clone, no memory
-of the last run. Everything needed is in this repo.
+Runs every day at 09:47 UTC, which is early morning Eastern and shifts by an
+hour when daylight saving ends, because cron is always UTC. Fresh session,
+clean clone, no memory of the last run. Everything needed is in this repo.
+
+It ran Monday and Thursday until 29 September 2026, when Bob moved it to daily.
+
+## Daily only works because of the delta
+
+The search window is 30 days (`tpr="r2592000"` in `li_sweep.py`). A daily run
+therefore returns yesterday's results shifted by one day: about 97 percent of
+any run is a repeat. Twice weekly, 3 of 30 days turned over. Daily, 1 does.
+
+So `run.py` keeps a per-candidate history in `tools/sweep/seen/<key>.json` and
+stamps every role with `first_seen` and `is_new`. `stats["new_today"]` counts
+them. A role is keyed on company plus title rather than its URL, because
+employers relist the same job under a fresh req id often enough that a URL key
+would present the same role as a new find every few days.
+
+**Lead the document with what is new.** Roles already reported belong in a
+compact "still open" list or left out, never re-presented as a fresh find. A
+document that repeats 97 percent of yesterday's is one people stop opening,
+and then the whole pipeline is theatre.
+
+`first_seen` is also worth using directly: a role that has been open for
+eleven days and still has not been filled is a different proposition from one
+posted this morning, and saying so is useful.
+
+The obvious alternative, narrowing the window to 24 hours, was rejected. The
+LinkedIn guest endpoint surfaces postings inconsistently and indexes some of
+them late, so a 24 hour window silently drops real roles. The 30 day window
+with a seen list gives both completeness and novelty.
+
+**`tools/sweep/seen/` must be pushed to `main`, with the outbox, not to the
+`claude/` branch.** Every run starts from a fresh clone of the default branch.
+A history sitting on a feature branch is a history the next run cannot see, so
+tomorrow would call all 99 roles new and the delta would quietly do nothing
+while appearing to work. This is the same trap as queueing the email on a
+feature branch.
 
 ## What it produces
 
@@ -255,8 +291,16 @@ receives anything and nobody finds out until someone asks.
 
 ## When a run finds nothing new
 
-Say so in one line and send anyway. A week with no new roles is information,
+Say so in one line and send anyway. A day with no new roles is information,
 and skipping the email makes the reader wonder whether the job ran.
+
+This matters far more now that it runs daily. `stats["new_today"]` will be
+zero or close to it on plenty of days, and that is the honest answer rather
+than a reason to pad the document. A short email saying two roles moved and
+nothing else did is worth more than a long one that recycles last week.
+
+Never manufacture volume by re-presenting roles the person has already been
+sent. It is the single fastest way to make this stop being read.
 
 ## Known limits
 
