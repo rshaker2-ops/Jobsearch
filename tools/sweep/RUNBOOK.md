@@ -157,6 +157,29 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
+### The ActiveState narrative goes first, for the people who have one
+
+`tools/sweep/narratives/` holds one file per candidate who was in the
+28 September reduction: `jonny.md`, `edan.md`, `robbie.md`. ActiveState
+restructured around AI that day and cut about half the company, roughly twenty
+people across every function. Bob sent each of those three their own narrative
+by email the same evening.
+
+If a file exists for the profile you are building, render it as the opening
+section of that person's document, ahead of the market finding. Use the
+headings as written and keep the quoted narrative text exact. Those are the
+words they are rehearsing for live interviews, so a paraphrase is worse than
+useless.
+
+No file means no section, and the list of who gets one is not hard-coded
+anywhere. Bob has no narrative because he is still at ActiveState, and Jeff was
+never there. Deleting a file is how the section stops appearing once someone
+has landed.
+
+The one-document-per-person rule applies here with no exceptions. Each file
+carries its owner's own record and their own reference framing, so no part of
+one person's narrative belongs in anyone else's document.
+
 ## Step 4: commit, then queue the email
 
 Commit the three documents to a `claude/` branch, push, open a draft PR.
