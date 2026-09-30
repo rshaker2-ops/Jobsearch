@@ -78,6 +78,28 @@ Roughly 8 to 12 minutes each; LinkedIn is rate limited and the script sleeps
 1.6s between calls on purpose. Run them sequentially, not in parallel, or
 LinkedIn starts returning 429.
 
+**Drive them with a script that skips finished profiles.** The whole chain is
+45 to 75 minutes and a background runner can kill it partway: on 30 September
+it was stopped about ten minutes in, having finished Bob and lost Edan mid
+search. The day before, the same chain ran 57 minutes untouched, so the limit
+is not a number you can plan around.
+
+    for who in bob edan robbie jeff jonny; do
+      [ -s "$SW/${who}_scored.json" ] && continue
+      python3 tools/sweep/run.py "$who" "$SW"
+    done
+
+Checking for the scored file first makes a restart cost only the profile that
+was in flight rather than everything after it. Without it, a kill at minute ten
+means starting all five again, and the second attempt is no more likely to
+survive than the first.
+
+**Commit `tools/sweep/seen/` as profiles finish, not only at the end.** The
+sweep stamps its history as it goes. If the container dies before that reaches
+git, those roles look new again tomorrow, which is precisely the repetition the
+delta exists to stop. Committing partway is cheap; the final state still goes to
+main with the outbox at Step 4.
+
 Each writes `/tmp/sweep/<name>_scored.json`: `stats` plus a `roles` array
 already filtered to title, location and seniority, each role carrying its full
 posting text, its published band, and the lowest years-of-experience figure
