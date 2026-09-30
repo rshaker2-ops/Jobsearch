@@ -27,6 +27,14 @@ and then the whole pipeline is theatre.
 eleven days and still has not been filled is a different proposition from one
 posted this morning, and saying so is useful.
 
+**The delta detects what left, not just what arrived.** A role in yesterday's
+history that is absent from today's results is worth reporting, and on
+30 September one was: a Workday seat with a $408,000 ceiling that was in
+Jonny's document on the 29th and gone on the 30th. Report it as an absence,
+never as a closure. The guest endpoint drops postings it still holds, so one
+missing sweep is not proof of anything, and the honest sentence is that it was
+there yesterday and is not today, so apply now or accept it may be gone.
+
 The obvious alternative, narrowing the window to 24 hours, was rejected. The
 LinkedIn guest endpoint surfaces postings inconsistently and indexes some of
 them late, so a 24 hour window silently drops real roles. The 30 day window
@@ -78,6 +86,28 @@ Roughly 8 to 12 minutes each; LinkedIn is rate limited and the script sleeps
 1.6s between calls on purpose. Run them sequentially, not in parallel, or
 LinkedIn starts returning 429.
 
+**Drive them with a script that skips finished profiles.** The whole chain is
+45 to 75 minutes and a background runner can kill it partway: on 30 September
+it was stopped about ten minutes in, having finished Bob and lost Edan mid
+search. The day before, the same chain ran 57 minutes untouched, so the limit
+is not a number you can plan around.
+
+    for who in bob edan robbie jeff jonny; do
+      [ -s "$SW/${who}_scored.json" ] && continue
+      python3 tools/sweep/run.py "$who" "$SW"
+    done
+
+Checking for the scored file first makes a restart cost only the profile that
+was in flight rather than everything after it. Without it, a kill at minute ten
+means starting all five again, and the second attempt is no more likely to
+survive than the first.
+
+**Commit `tools/sweep/seen/` as profiles finish, not only at the end.** The
+sweep stamps its history as it goes. If the container dies before that reaches
+git, those roles look new again tomorrow, which is precisely the repetition the
+delta exists to stop. Committing partway is cheap; the final state still goes to
+main with the outbox at Step 4.
+
 Each writes `/tmp/sweep/<name>_scored.json`: `stats` plus a `roles` array
 already filtered to title, location and seniority, each role carrying its full
 posting text, its published band, and the lowest years-of-experience figure
@@ -114,6 +144,22 @@ betting on a new architecture" does not trip it.
 location, remote or on-site, so say where a role actually sits rather than
 assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
 
+**Robbie is rewriting his own resume, as of 29 September.** Do not offer to do
+it for him; the 29 September document did, and he has taken it on. The problem
+it fixes is real and worth restating once he has: his resume carried a single
+dated line, ActiveState 2025 to Present, so a reader subtracted to eighteen
+months and never reached the 95 vendor assessments or the eight consecutive
+months at 100% compliance behind it. Bob confirmed ActiveState had him doing a
+much more senior person's job.
+
+Two things follow. The targeting stands regardless of the rewrite: aim at roles
+asking four years rather than five or six, because a one-year gap is arguable
+and a two-year gap is not, and a resume edit does not change what a posting
+requires. And when he sends a new version, read it and say whether the fix
+actually landed. A self-edit can correctly date the role and still bury the
+volume in paragraph four, which leaves the reader doing the same subtraction.
+Offering to review the new version is useful; offering to write it again is not.
+
 Jonny is in Tampa and open to remote anywhere in the United States, so he keeps
 any US location like the others. His distinctive credential is platform
 transformation: taking companies off legacy products onto new ones, which he has
@@ -121,6 +167,11 @@ done at three of four employers, plus a gross revenue retention turnaround from
 roughly 65 to 87 percent across a $50M to $150M ARR portfolio. His blocking
 problem, found in the 11 September resume audit, is that nine of sixteen target
 roles gate on years spent managing product people.
+
+**His floor and level are settled, as of 29 September.** $200,000 base, Director
+through VP Product. Bob confirmed both. Stop asking him to check them: the
+documents did on 28 and 29 September and the question is now answered. Treat the
+figures in `profiles.json` as decided, like every other floor.
 
 **The headcount is settled, as of 28 September.** At Malwarebytes he had three
 direct reports and led a fifteen-person cross-functional team. Bob confirmed it.
@@ -217,6 +268,29 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
+### Every superlative has to be computed, not felt
+
+"The highest band I have seen for you", "the best fit in two days", "the only
+role that does X" are claims about the whole dataset, and the only honest way
+to make one is to sort the data and look. On 30 September Edan's document said
+Legora's $230,000 to $300,000 was the highest band I had seen for him in two
+days of sweeping. Eight roles carried over from yesterday beat it at the
+ceiling, none of them gated out on years, and the error survived the document
+build, the link check and the em dash check because none of those reads meaning.
+It was caught by sorting his 299 rows by `band_high` and reading the top of the
+list, which takes one line of Python.
+
+Superlatives are worth making, because they are what turns a list into advice.
+Just compute them. And when a superlative is true only of a subset, say which
+subset: "the best band of today's eight" is a different and much weaker claim
+than "the best band in your list", and the reader is entitled to know which one
+they are being given.
+
+The same discipline applies to requirements. Broadridge's posting says
+"Minimum of 1-3 years"; the document said "one year asked, which you clear
+outright", which quietly turned a range Robbie sits inside into a bar he had
+cleared. Quote the posting's own words for anything load bearing.
+
 ### The ActiveState narrative goes first, for the people who have one
 
 `tools/sweep/narratives/` holds one file per candidate who was in the
@@ -243,6 +317,16 @@ one person's narrative belongs in anyone else's document.
 ## Step 4: commit, then queue the email
 
 Commit the three documents to a `claude/` branch, push, open a draft PR.
+
+**Never type a job URL into an email body.** Resolve every link by looking it
+up in that candidate's scored data, keyed on a company and title fragment, and
+fail the build if the lookup does not return exactly one row. On 30 September
+six of fifteen links in the five drafted emails were req ids I had typed from
+memory, and every one of them was for a role new that day, so no amount of
+re-reading the prose would have caught it. `sweep_doc.js` already refuses to
+build a document with a missing link; the email step is hand-written HTML and
+had no such guard, which is exactly why it failed. The rule is mechanical:
+if a URL is not in the data, it does not go in the email.
 
 Delivery is a separate step and it does NOT happen here. Do not try to send
 mail. A GitHub Actions job does that at 13:00 UTC, an hour after this run.
