@@ -28,6 +28,16 @@ jobs:
       - name: Sender tests
         run: python3 tools/mail/test_send.py
 
+      - name: Send workflow exit-code policy
+        # Lifts the Send step's script out of send-scheduled-email.yml and runs
+        # it under bash -e, the way the runner does. Added after the 30
+        # September cron went red on exit 2: the policy that was supposed to
+        # pass that case was unreachable under errexit and had never once run.
+        # PyYAML is needed to read the workflow and is not in the 3.12 image.
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 -m unittest tools.mail.test_workflow_gate -v
+
       - name: Sweep pipeline tests
         run: python3 tools/sweep/test_run.py
 
