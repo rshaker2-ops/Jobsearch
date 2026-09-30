@@ -154,6 +154,32 @@ def sweep(key, outdir):
     os.makedirs(outdir, exist_ok=True)
     rows, stats = [], {}
 
+    # The whole search phase is cached for the day, for the same reason the
+    # descriptions are. It is several minutes of rate-limited calls and it
+    # produces the same card list every time it runs on a given date, so a
+    # killed sweep that restarts should not pay for it twice. On 30 September
+    # that cost 3 to 4 minutes out of every 10 minute window, which is most of
+    # the budget spent rediscovering what was already known.
+    search_cache = os.path.join(outdir, f".search_{key}_{time.strftime('%Y-%m-%d')}.json")
+    try:
+        with open(search_cache, encoding="utf-8") as fh:
+            rows = json.load(fh)
+        print(f"  search phase: {len(rows)} cards from cache", file=sys.stderr, flush=True)
+    except (FileNotFoundError, ValueError):
+        rows = []
+
+    if not rows:
+        rows = _gather(p, key)
+        with open(search_cache, "w", encoding="utf-8") as fh:
+            json.dump(rows, fh)
+
+    stats["raw"] = len(rows)
+    return _score(key, p, rows, stats, outdir)
+
+
+def _gather(p, key):
+    """Every card both channels return, before any filtering."""
+    rows = []
     # ---- channel A: LinkedIn guest endpoint -------------------------------
     locs = ["United States"] + (["Boston, Massachusetts, United States"]
                                 if "ma-ri" in p["locations"] else [])
@@ -180,7 +206,12 @@ def sweep(key, outdir):
                 rows += wd_sweep.search(t[0], t[1], t[2], q)
             except Exception as e:
                 print(f"  wd {t[0]}/{q}: {e}", file=sys.stderr)
-    stats["raw"] = len(rows)
+    return rows
+
+
+def _score(key, p, rows, stats, outdir):
+    """Everything after the two channels have been read: dedupe, filter, read
+    each survivor, stamp the delta, write the scored file."""
 
     # Two passes. The URL catches the same posting returned by several queries;
     # company plus title catches an employer listing one job twice under
