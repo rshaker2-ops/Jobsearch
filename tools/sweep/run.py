@@ -18,6 +18,7 @@ Two defects this pipeline exists to avoid, both found the hard way:
      paying $400k that turns out to require writing Python daily is a rule
      out, not a lead. The requirements decide.
 """
+import hashlib
 import json, os, re, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from li_sweep import search, detail
@@ -235,20 +236,48 @@ def sweep(key, outdir):
     stats["after_location"] = len(rows)
 
     # ---- read every survivor end to end ----------------------------------
+    # Fetched descriptions are cached on disk by URL.
+    #
+    # Reading a posting is the slow part: roughly five a minute, rate limited on
+    # purpose. Edan's list is around 300, so an hour of fetching. On 30 September
+    # the background runner killed the sweep twice at about ten minutes, and
+    # without a cache each restart began at role one and he could never have
+    # finished at all.
+    #
+    # With it, a restart re-reads from disk and only fetches what is missing, so
+    # every attempt makes progress instead of repeating the last one.
+    cache_dir = os.path.join(outdir, ".desc_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+
+    def cached_desc(url, is_workday):
+        key = hashlib.sha1((url or "").encode("utf-8")).hexdigest()
+        path = os.path.join(cache_dir, f"{key}.txt")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                return fh.read()
+        except FileNotFoundError:
+            pass
+        if is_workday:
+            try:
+                import wd_detail
+                desc = (wd_detail.get(url) or {}).get("desc", "")
+            except Exception:
+                desc = ""
+        else:
+            desc, _ = detail(url)
+            desc = desc or ""
+        # An empty read is not cached: it is usually a transient fetch failure,
+        # and caching it would make the miss permanent for the next 30 days.
+        if desc:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(desc)
+        return desc
+
     HARD = re.compile(p["hard_gate"], re.I)
     FIT  = re.compile(p["fit_signal"], re.I)
     out = []
     for i, r in enumerate(rows, 1):
-        if r.get("ats") == "workday":
-            try:
-                import wd_detail
-                d = wd_detail.get(r["url"]) or {}
-                desc = d.get("desc", "")
-            except Exception:
-                desc = ""
-        else:
-            desc, _ = detail(r["url"])
-            desc = desc or ""
+        desc = cached_desc(r["url"], r.get("ats") == "workday")
         yrs = [int(x) for x in YEARS.findall(desc) if int(x) <= 25]
         money = bands(desc)
         r.update(desc=desc[:14000], money=money,
