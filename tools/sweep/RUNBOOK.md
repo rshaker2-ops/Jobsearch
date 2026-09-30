@@ -27,6 +27,14 @@ and then the whole pipeline is theatre.
 eleven days and still has not been filled is a different proposition from one
 posted this morning, and saying so is useful.
 
+**The delta detects what left, not just what arrived.** A role in yesterday's
+history that is absent from today's results is worth reporting, and on
+30 September one was: a Workday seat with a $408,000 ceiling that was in
+Jonny's document on the 29th and gone on the 30th. Report it as an absence,
+never as a closure. The guest endpoint drops postings it still holds, so one
+missing sweep is not proof of anything, and the honest sentence is that it was
+there yesterday and is not today, so apply now or accept it may be gone.
+
 The obvious alternative, narrowing the window to 24 hours, was rejected. The
 LinkedIn guest endpoint surfaces postings inconsistently and indexes some of
 them late, so a 24 hour window silently drops real roles. The 30 day window
@@ -260,6 +268,29 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
+### Every superlative has to be computed, not felt
+
+"The highest band I have seen for you", "the best fit in two days", "the only
+role that does X" are claims about the whole dataset, and the only honest way
+to make one is to sort the data and look. On 30 September Edan's document said
+Legora's $230,000 to $300,000 was the highest band I had seen for him in two
+days of sweeping. Eight roles carried over from yesterday beat it at the
+ceiling, none of them gated out on years, and the error survived the document
+build, the link check and the em dash check because none of those reads meaning.
+It was caught by sorting his 299 rows by `band_high` and reading the top of the
+list, which takes one line of Python.
+
+Superlatives are worth making, because they are what turns a list into advice.
+Just compute them. And when a superlative is true only of a subset, say which
+subset: "the best band of today's eight" is a different and much weaker claim
+than "the best band in your list", and the reader is entitled to know which one
+they are being given.
+
+The same discipline applies to requirements. Broadridge's posting says
+"Minimum of 1-3 years"; the document said "one year asked, which you clear
+outright", which quietly turned a range Robbie sits inside into a bar he had
+cleared. Quote the posting's own words for anything load bearing.
+
 ### The ActiveState narrative goes first, for the people who have one
 
 `tools/sweep/narratives/` holds one file per candidate who was in the
@@ -286,6 +317,16 @@ one person's narrative belongs in anyone else's document.
 ## Step 4: commit, then queue the email
 
 Commit the three documents to a `claude/` branch, push, open a draft PR.
+
+**Never type a job URL into an email body.** Resolve every link by looking it
+up in that candidate's scored data, keyed on a company and title fragment, and
+fail the build if the lookup does not return exactly one row. On 30 September
+six of fifteen links in the five drafted emails were req ids I had typed from
+memory, and every one of them was for a role new that day, so no amount of
+re-reading the prose would have caught it. `sweep_doc.js` already refuses to
+build a document with a missing link; the email step is hand-written HTML and
+had no such guard, which is exactly why it failed. The rule is mechanical:
+if a URL is not in the data, it does not go in the email.
 
 Delivery is a separate step and it does NOT happen here. Do not try to send
 mail. A GitHub Actions job does that at 13:00 UTC, an hour after this run.
