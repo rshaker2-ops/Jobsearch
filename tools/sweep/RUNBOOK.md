@@ -268,6 +268,28 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
+### A guard nobody has watched fail is not a guard
+
+The send workflow's exit-code policy, the thing that stops a late cron going
+red when the day is already delivered, was written on 28 September, reviewed,
+merged, and never executed once. GitHub runs a `run:` block as `bash -e {0}`,
+so errexit is on before the first line, and the script's `set -uo pipefail`
+does not clear it: `set` turns named options on or off and says nothing about
+the rest. send.py exited 2, bash killed the script on that line, and every
+line below it, the entire policy, was unreachable. Three crons went red for
+the one reason that is not a problem, and the `::error::` branch never printed
+either, so the red X came with no explanation at all.
+
+Two things to take from it. A conditional that has never been observed running
+is not tested, it is hoped for, and CI passing says nothing because CI was not
+exercising it. And when a fix does not appear to work, check whether it ran at
+all before assuming it ran and was wrong.
+
+`tools/mail/test_workflow_gate.py` now lifts the Send step's script out of the
+YAML and runs it under `bash -e` with a stubbed send.py, so the policy is
+executed on every pull request rather than read. Five of its eight tests fail
+if the `set +e` is removed, which is the only reason to trust the other three.
+
 ### Every superlative has to be computed, not felt
 
 "The highest band I have seen for you", "the best fit in two days", "the only

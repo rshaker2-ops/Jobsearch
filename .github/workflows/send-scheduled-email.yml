@@ -6,11 +6,18 @@ name: Send scheduled email
 # this workflow at :00 has been hours late, and :00 is when GitHub's scheduler
 # is most congested.
 #
-# The cron is a backstop, not the primary trigger. It has never fired on time:
-# nothing at 13:00 on 24 September and a run at 17:36 instead, no run at all at
-# 13:00 on 28 September and one at 19:52. The sweep run dispatches this workflow
-# itself once its queue is verified, so by the time a late cron arrives the day
-# has usually already been delivered. That is expected and is not a failure.
+# The cron is a backstop, not the primary trigger, and moving it off the hour
+# did not help. Every firing so far has been hours late: 24 September at 17:36,
+# 28 September at 19:52, 30 September at 18:28, which is 5h05m after the 13:23
+# it is set for. Treat the arrival time as unpredictable within the day.
+#
+# The sweep run dispatches this workflow itself once its queue is verified, so
+# by the time a late cron arrives the day has usually already been delivered
+# and send.py exits 2. That is the expected outcome and the step below passes
+# it deliberately. It did not until 30 September: the exit-code policy sat
+# under an inherited errexit and had never executed, so all three late crons
+# went red for the one reason that is not a problem. tools/mail/test_workflow_gate.py
+# runs that policy under bash -e now, so it cannot go quiet again.
 on:
   schedule:
     - cron: "23 13 * * *"
@@ -64,7 +71,17 @@ jobs:
           # the sweep run pressing the button.
           TRIGGER: ${{ github.event_name }}
         run: |
-          set -uo pipefail
+          # set +e is load bearing and must come first. GitHub runs this step
+          # as "bash -e {0}", so errexit is already ON before the first line,
+          # and "set -uo pipefail" does NOT clear it: set only turns options
+          # on or off as named. Without the +e, the first non-zero exit from
+          # send.py kills the script instantly and every line below here,
+          # including the whole exit-code policy, is unreachable. That is
+          # exactly what happened: the 18:28 UTC cron on 30 September exited
+          # 2 and went red without ever printing the notice, and so did the
+          # runs on 24 and 28 September. The policy was written, merged, and
+          # never once executed.
+          set +e -uo pipefail
           ARGS=""
           if [ "${{ inputs.check_auth }}" = "true" ]; then
             python3 tools/mail/send.py --check-auth
