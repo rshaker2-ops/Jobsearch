@@ -353,6 +353,19 @@ The same discipline applies to requirements. Broadridge's posting says
 outright", which quietly turned a range Robbie sits inside into a bar he had
 cleared. Quote the posting's own words for anything load bearing.
 
+### Published posts live in the candidate's folder, not in narratives/
+
+`tools/sweep/narratives/` is interview preparation and the builder renders it
+into the opening section of the person's document. Anything a candidate has
+actually published goes in their own folder instead, dated, with a note on what
+was deliberately left out. `Robbie/LinkedIn_Open_To_Work_01Oct.md` is the first.
+The CI check also requires every filename in `narratives/` to be a profile key,
+so a second file for one person cannot go there regardless.
+
+Read a candidate's published post before writing anything public for them again.
+The reasons something was omitted are recorded with it, and a later draft that
+helpfully restores an omission can contradict what is already live.
+
 ### The ActiveState narrative goes first, for the people who have one
 
 `tools/sweep/narratives/` holds one file per candidate who was in the
