@@ -268,6 +268,46 @@ Write to `<Folder>/<Name>_Channel_Sweep_<DDMon>.docx`, e.g.
 `Bob/Shaker_Channel_Sweep_29Sep.docx`. Keep previous runs; they are the record
 of what the market looked like that week.
 
+### A guard that checks a key exists has not checked anything
+
+`sweep_doc.js` refuses to build a document with a missing posting link, added on
+30 September after five documents went out with none. On 1 October five more
+nearly went out with every rule-out link broken, and the guard passed.
+
+The specs passed bare URL strings where `card()` and `ruled()` want a
+`[label, url]` pair. `linkLine` rendered its prefix with nothing behind it, so
+each rule-out printed CHECK ME and led nowhere. The guard tested
+`"link" in r`, the key was present, so it said nothing. The same specs wrote
+`why` where `ruled()` reads `reason`, so every rule-out also rendered with no
+stated reason, which is an opinion with the evidence stripped out.
+
+Neither fault was visible in the prose and neither failed the build. What found
+them was counting hyperlinks in the finished `.docx` and comparing against the
+number the spec should have produced. Bob's had three where seven were due.
+
+The guard now validates the shape the renderer actually consumes: a two-element
+array, a non-empty label, a URL that starts with http. It requires `reason` on
+every rule-out, and when it finds `why` instead it says so by name. It was
+checked by running it against the broken specs and watching it reject all eight
+faults before any fix was applied.
+
+The general rule: a guard should assert the thing the consumer needs, not the
+thing the producer happened to write. And count the output. Prose reads fine
+with a dead link in it.
+
+### The delta key is company plus title, so a company rename reads as new
+
+`role_key()` is company plus title rather than URL, because employers relist the
+same job under a fresh requisition id every few days and a URL key would call
+each relist a new find. It does not survive the company changing its name. On
+1 October a Trinity Life Sciences role first seen 29 September came back as
+Trinity Partners, same band, same text, and counted as new. Bob's four new roles
+were really three.
+
+Not worth fixing by fuzzy-matching company names, which would start merging
+genuinely different employers. Worth knowing when a count looks surprising:
+check whether two entries share a band and a title before reporting a number.
+
 ### A guard nobody has watched fail is not a guard
 
 The send workflow's exit-code policy, the thing that stops a late cron going
@@ -312,6 +352,19 @@ The same discipline applies to requirements. Broadridge's posting says
 "Minimum of 1-3 years"; the document said "one year asked, which you clear
 outright", which quietly turned a range Robbie sits inside into a bar he had
 cleared. Quote the posting's own words for anything load bearing.
+
+### Published posts live in the candidate's folder, not in narratives/
+
+`tools/sweep/narratives/` is interview preparation and the builder renders it
+into the opening section of the person's document. Anything a candidate has
+actually published goes in their own folder instead, dated, with a note on what
+was deliberately left out. `Robbie/LinkedIn_Open_To_Work_01Oct.md` is the first.
+The CI check also requires every filename in `narratives/` to be a profile key,
+so a second file for one person cannot go there regardless.
+
+Read a candidate's published post before writing anything public for them again.
+The reasons something was omitted are recorded with it, and a later draft that
+helpfully restores an omission can contradict what is already live.
 
 ### The ActiveState narrative goes first, for the people who have one
 
