@@ -102,15 +102,41 @@ const spec = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
  *
  * So it is an error rather than a warning. A missing link now stops the build. */
 const missing = [];
-(spec.tier1 || []).forEach(c => { if (!c.link) missing.push(`tier1: ${c.org} ${c.title}`); });
+
+/* Checking that a link key EXISTS is not enough, which 1 October proved. A spec
+ * passed bare URL strings where card() and ruled() want a [label, url] pair.
+ * linkLine then rendered its prefix with nothing behind it, so every rule-out
+ * printed "CHECK ME" and led nowhere, the guard passed because the key was
+ * present, and the only reason it was caught was counting hyperlinks in the
+ * built file afterwards. So validate the shape the renderer actually needs. */
+const pair = (l) => Array.isArray(l) && l.length === 2
+  && typeof l[0] === "string" && l[0].trim() !== ""
+  && typeof l[1] === "string" && /^https?:\/\//.test(l[1]);
+
+(spec.tier1 || []).forEach(c => {
+  if (!c.link) missing.push(`tier1: ${c.org} ${c.title} has no link`);
+  else if (!pair(c.link)) missing.push(`tier1: ${c.org} ${c.title} link is not a [label, url] pair: ${JSON.stringify(c.link)}`);
+});
+
 /* A ruled-out role may legitimately have no link, but only when the spec says
  * so with an explicit null. Leaving the key out is the omission this guard
  * exists to catch; writing null is a decision somebody made on purpose. */
 (spec.ruledOut || []).forEach(r => {
-  if (!("link" in r)) missing.push(`ruledOut: ${r.org} ${r.title}`);
+  if (!("link" in r)) missing.push(`ruledOut: ${r.org} ${r.title} has no link key`);
+  else if (r.link !== null && !pair(r.link)) missing.push(`ruledOut: ${r.org} ${r.title} link is not a [label, url] pair: ${JSON.stringify(r.link)}`);
+  /* ruled() reads `reason`. A spec that says `why` instead renders a rule-out
+   * with no stated reason, which is an opinion with the evidence removed. */
+  if (!r.reason || String(r.reason).trim() === "") {
+    missing.push(`ruledOut: ${r.org} ${r.title} has no reason${"why" in r ? ' (found "why"; ruled() reads "reason")' : ""}`);
+  }
 });
+
 ((spec.tier2 || {}).rows || []).forEach(r => {
-  if (!Array.isArray(r) && !r.link) missing.push(`tier2: ${(r.cells || [])[0]}`);
+  if (Array.isArray(r)) return;
+  if (!r.link) missing.push(`tier2: ${(r.cells || [])[0]} has no link`);
+  else if (typeof r.link !== "string" || !/^https?:\/\//.test(r.link)) {
+    missing.push(`tier2: ${(r.cells || [])[0]} link must be a url string: ${JSON.stringify(r.link)}`);
+  }
 });
 if (missing.length) {
   console.error(`${spec.out}: ${missing.length} named role(s) with no link to the posting:`);
