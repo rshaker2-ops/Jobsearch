@@ -362,12 +362,25 @@ rather than from any resume, dossier or CV.
 
 | Arc | Figure | Where |
 |---|---|---|
+| Build | zero to $100M | managed detection and response, Symantec |
 | Build | zero to $10M | incident response, Symantec |
 | Build | zero to $10M | cyber insurance center, Symantec |
 | Build | zero to $10M, to profitability | MDR, Malwarebytes |
 | Growth | $150M to $250M | managed network forensics, Symantec |
 | Portfolio outcome | reached $500M | the overall Symantec business, as a result |
 | Launches | 12 across his career, 5 of them at Symantec | both true, different scopes |
+
+Bob added the Symantec managed detection and response build, zero to $100M, on
+1 October after the first version of this table was written. It is the largest
+single build on his record and it also makes the $500M total add up, which the
+earlier figures did not quite do. The highlights bullet had said "built three
+businesses from zero to $10M", which capped him at $10M while the experience
+section below showed the $100M build, so the summary contradicted the detail and
+understated him by $90M. Fixed the same day.
+
+His degree year was also removed. He went back to school after working for many
+years, so a 2004 date sat on the same page as a claim of 30+ years and invited
+arithmetic it did not answer. Nobody hiring at this level needs the year.
 | Employers | four PE-backed businesses | Trellix, Malwarebytes, Symantec, ActiveState |
 
 Symantec counts as PE-backed because Silver Lake invested $500M while it was
