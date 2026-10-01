@@ -353,6 +353,48 @@ The same discipline applies to requirements. Broadridge's posting says
 outright", which quietly turned a range Robbie sits inside into a bar he had
 cleared. Quote the posting's own words for anything load bearing.
 
+### Bob's figures, canonical, confirmed 1 October
+
+Five documents in this repo disagreed about Bob's career numbers, and a figure
+being in a document he wrote is not the same as it being sourced. On 1 October he
+walked through each one. These are the confirmed facts; take numbers from here
+rather than from any resume, dossier or CV.
+
+| Arc | Figure | Where |
+|---|---|---|
+| Build | zero to $10M | incident response, Symantec |
+| Build | zero to $10M | cyber insurance center, Symantec |
+| Build | zero to $10M, to profitability | MDR, Malwarebytes |
+| Growth | $150M to $250M | managed network forensics, Symantec |
+| Portfolio outcome | reached $500M | the overall Symantec business, as a result |
+| Launches | 12 across his career, 5 of them at Symantec | both true, different scopes |
+| Employers | four PE-backed businesses | Trellix, Malwarebytes, Symantec, ActiveState |
+
+Symantec counts as PE-backed because Silver Lake invested $500M while it was
+public and led from inside the board. Worth knowing because a cybersecurity
+reader will remember Symantec as NASDAQ-listed and may ask. Also worth keeping
+Silver Lake's $500M well away from the $500M business figure on any one page,
+since they are different things that happen to share a number.
+
+**What went wrong, so it does not repeat.** The old CV said "Scaled 4 PE-backed
+businesses from $10M to $500M+", which welded an employer count onto a revenue
+range and used $10M as a starting point when it is the endpoint of the builds.
+No business went from $10M to $500M. On 30 September that line was partly
+rewritten to "$0M to $100M+ and from $100M to $250M+", which was also wrong in
+both halves: the builds reached $10M, not $100M, and the growth arc starts at
+$150M, not $100M. That error was propagated from his resume into a note drafted
+for a recruiter before he caught it.
+
+The lesson is narrow and worth holding. When a figure is load bearing, source it
+to the engagement that produced it, not to another document that may also be
+wrong. Asking "is this the same businesses or separate ones" was the right
+question about the $250M and the wrong question to stop at, because it took the
+$100M on either side as given.
+
+`Bob/superseded/` and `Bob/Shaker_Executive_Product_Search_Dossier.docx` still
+carry the old $10M to $500M range. They are left as they are, because an archive
+should record what was actually written. Do not quote them.
+
 ### Published posts live in the candidate's folder, not in narratives/
 
 `tools/sweep/narratives/` is interview preparation and the builder renders it
