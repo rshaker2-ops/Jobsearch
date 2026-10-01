@@ -152,13 +152,48 @@ months and never reached the 95 vendor assessments or the eight consecutive
 months at 100% compliance behind it. Bob confirmed ActiveState had him doing a
 much more senior person's job.
 
-Two things follow. The targeting stands regardless of the rewrite: aim at roles
-asking four years rather than five or six, because a one-year gap is arguable
-and a two-year gap is not, and a resume edit does not change what a posting
-requires. And when he sends a new version, read it and say whether the fix
+Two things follow. When he sends a new version, read it and say whether the fix
 actually landed. A self-edit can correctly date the role and still bury the
 volume in paragraph four, which leaves the reader doing the same subtraction.
 Offering to review the new version is useful; offering to write it again is not.
+And his targeting needs the correction below, which is the more important of
+the two.
+
+**His targeting, corrected 1 October. There is no squeeze.** The 30 September
+and 1 October documents both told him the roles that would take his tenure
+price below his floor while the roles above it want years he lacks, and the
+1 October one said that squeeze had "broken". Both were wrong. Counted across
+125 roles in his own data:
+
+| Stated years | Roles | Clear the $94,500 floor | Median band top |
+|---|---|---|---|
+| 0 to 2 | 41 | 17 of the 25 publishing | $102,000 |
+| 3 | 35 | 12 of 14 | $108,000 |
+| 4 to 5 | 12 | 7 of 8 | $145,000 |
+| 6+ | 6 | 4 of 4 | $120,000 |
+
+The 0 to 2 band is the largest in his list and most of it clears his floor.
+Chime at $105,000 to $145,000 asking two years, Quantum Space at $115,000 to
+$145,000 asking two, M&T Bank topping at $143,000 asking two. The same 17 roles
+were in the 30 September data when the opposite was written.
+
+That claim came from two roles that happened to be in front of me, Broadridge
+under his floor and Crawford Thomas at six years, generalised without counting
+the other 126. Two well-chosen examples will make any pattern. Count before
+describing a market.
+
+So the targeting is not about clearing the floor, which he already does at two
+years. It is about the $43,000 between the 0 to 2 median top and the 4 to 5
+median top. Apply at 0 to 2 for volume and speed, and go after 4 and 5
+deliberately for the money, leading with throughput rather than dates: 95
+vendor assessments, 30 customer questionnaires and eight consecutive months at
+100% compliance is what a four-year analyst has on paper, and he did it in
+eighteen months. Bob's point, made 1 October, is that the work was what a much
+more senior person would have been expected to do, and that is the argument
+that wins the stretch rather than a plea about the gap.
+
+Stop saying a one-year gap is arguable and a two-year gap is not. It framed the
+whole thing as a concession to negotiate instead of an upside to go and take.
 
 Jonny is in Tampa and open to remote anywhere in the United States, so he keeps
 any US location like the others. His distinctive credential is platform
@@ -352,6 +387,19 @@ The same discipline applies to requirements. Broadridge's posting says
 "Minimum of 1-3 years"; the document said "one year asked, which you clear
 outright", which quietly turned a range Robbie sits inside into a bar he had
 cleared. Quote the posting's own words for anything load bearing.
+
+It applies hardest to claims about the shape of a market, which are superlatives
+wearing a different hat. On 30 September Robbie's document described a squeeze:
+roles that take his tenure price below his floor, roles above his floor want
+years he lacks. It came from two roles that happened to be open on the page in
+front of me and it was wrong about the other 126. Counting took one query and
+showed the largest band in his list sitting at nought to two years with most of
+it clearing his floor. Bob caught it eleven days later by asking why so many of
+the roles wanted three to five years.
+
+A market claim needs a count, a cross-tabulation, or both. Two well-chosen
+examples will make any pattern you like, which is exactly why they are not
+evidence of one.
 
 ### Bob's figures, canonical, confirmed 1 October
 
