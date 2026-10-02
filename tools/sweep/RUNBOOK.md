@@ -339,9 +339,18 @@ each relist a new find. It does not survive the company changing its name. On
 Trinity Partners, same band, same text, and counted as new. Bob's four new roles
 were really three.
 
+It does not survive a parent and a subsidiary posting the same job either. On
+2 October a Head of Product at $225,000 to $300,000 in New York arrived twice,
+once as TKO and once as On Location, with identical bands, identical locations
+and identical requirement text, because On Location is TKO's events and
+hospitality business. Bob's six new roles were really five. That is the second
+rename in two days.
+
 Not worth fixing by fuzzy-matching company names, which would start merging
 genuinely different employers. Worth knowing when a count looks surprising:
 check whether two entries share a band and a title before reporting a number.
+Two rows with the same band and the same title are one job until proven
+otherwise, whatever the company field says.
 
 ### A guard nobody has watched fail is not a guard
 
@@ -400,6 +409,78 @@ the roles wanted three to five years.
 A market claim needs a count, a cross-tabulation, or both. Two well-chosen
 examples will make any pattern you like, which is exactly why they are not
 evidence of one.
+
+### Never estimate a band, and never trust the parsed one
+
+The rule has always been to quote only what the posting says and to write "not
+published" rather than guess. On 2 October I broke it in a way the rule did not
+obviously cover. Doppel published "$120,000-140,000 OTE", and Jeff's document
+said the base "could be anywhere from $95,000 to $115,000 with the rest
+variable". Those two numbers appear nowhere in the posting. I made them up from
+a plausible OTE split and the hedging made it worse rather than better, because
+a number in a document gets remembered and the hedge does not.
+
+So the rule, stated so it covers this: a dollar figure may appear in a document
+only if it is in the posting's text, in the scored band for that posting, is the
+candidate's floor, or is arithmetic on those. Nothing else. If the posting's
+comp is ambiguous, say what the ambiguity is. Doppel in fact publishes the same
+two figures twice, once labelled OTE and once labelled "Salary Range", which
+makes the base genuinely unanswerable from the text. That is more useful to Jeff
+than any estimate, and it is true.
+
+The parsed band is not the posting either. Three of 2 October's bands were wrong
+in `*_scored.json`:
+
+| Posting | Parsed | What the posting says |
+|---|---|---|
+| Zocks | $130,000 flat | "$130,000-150,000K base salary", the top dropped over the stray K |
+| Chime | $309,000 low | "base salary ... will begin at $326,000", $17,000 higher |
+| Seneca Gaming | $58,883 flat band | "Salary Starting Rate $58,883.30", negotiable, no top published |
+
+A flat band where low equals high usually means the parser found one number, not
+that the employer published one. Read the comp sentence before describing it.
+
+So the check, `tools/check_figures.py`: extract every dollar figure from every
+built document and every email body, and trace each one to posting text, a
+parsed band, the candidate's floor, or an arithmetic difference between those.
+
+    python3 tools/check_figures.py --scored <sweep dir> \
+      --doc bob=Bob/....docx --html bob=<outbox>/rshaker2@gmail.com.html ...
+
+Three outcomes, not two, and the middle one is the point. **traced** to a linked
+posting, silent. **review**, traceable only to the candidate's wider list,
+printed but not failed. **untraced**, failed.
+
+Be clear about what it earns, because the first version of this entry claimed
+more. It does not reliably fail the error that prompted it. Run against the
+original faulty document, the invented $95,000 and $115,000 land in *review*,
+not untraced, because three other roles in Jeff's own list have a $95,000 band
+endpoint and one has $115,000. Round salary numbers inside a candidate's range
+nearly always coincide with something. The untraced tier catches a figure pulled
+from nowhere; an invented round number surfaces in review, and only if somebody
+reads it.
+
+So read the review lines instead of skipping to the exit code. Exit zero means
+no figure was baseless, not that every figure is right.
+
+Two true things land in review and both are worth the noise. A statistic
+computed across the whole list traces only if the document prints its operands:
+Robbie's $43,000 traced in the document, which shows "$102,000 vs $145,000", and
+failed in the email, which described the two medians in words without them. That
+failure was the check working. **Write the operands next to a derived figure, in
+the email as well as the document**, or the reader is asked to take it on trust.
+The other is a band belonging to a role the document names but does not link,
+like the three two-year roles quoted at Robbie.
+
+An earlier version of the check was worse than useless on exactly this: it
+allowed the difference between *any* two band endpoints in the candidate's list,
+and across a hundred-odd bands those differences form a set dense enough to
+excuse almost any round number. The invented $95,000 is $185,000 minus a $90,000
+floor. Deltas are now restricted to operands that appear on the page.
+
+Run it every day, after the build and before the queue. `tools/test_check_figures.py`
+pins the behaviour, including the weaknesses above, so the limits are executable
+rather than remembered.
 
 ### Bob's figures, canonical, confirmed 1 October
 

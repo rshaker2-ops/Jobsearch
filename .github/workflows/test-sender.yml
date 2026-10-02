@@ -38,6 +38,15 @@ jobs:
           python3 -m pip install --quiet pyyaml
           python3 -m unittest tools.mail.test_workflow_gate -v
 
+      - name: Figure tracing check tests
+        # tools/check_figures.py traces every dollar figure in a built document
+        # back to posting text, a parsed band, a floor, or arithmetic on those.
+        # Added 2 October after Jeff's document quoted an invented $95,000 to
+        # $115,000 base range off an OTE label. These tests also pin what the
+        # check deliberately does NOT catch, so nobody trusts it further than it
+        # goes: see the StatedLimits cases.
+        run: python3 -m unittest discover -s tools -p "test_check_figures.py" -t tools -v
+
       - name: Sweep pipeline tests
         run: python3 tools/sweep/test_run.py
 
