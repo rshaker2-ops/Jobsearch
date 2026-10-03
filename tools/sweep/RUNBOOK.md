@@ -215,9 +215,40 @@ a sweep, and the one time a guess crept in it called Fidelity a conflict
 because "this transition does not apply to fully remote roles" mentions remote
 work while talking about other people's jobs.
 
-**Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
-location, remote or on-site, so say where a role actually sits rather than
-assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.
+**Location rules, as of 3 October.** Bob and Jeff are **remote only**. Edan and
+Robbie keep any United States location, remote or on-site, with Boston and
+Rhode Island prioritised. Jonny keeps Tampa or remote anywhere in the US. Say
+where a role actually sits rather than assuming remote.
+
+Bob moved to remote only on 3 October. Flipping his `locations` to
+`remote-only` on its own changed **nothing**, and that is worth understanding
+before trusting the setting again: every LinkedIn row arrives from a search run
+against "United States", so `from_remote_search` is true for all of them, and
+the branch in `loc_ok()` that trusts the flag admitted the entire list. 105
+postings in, 105 out.
+
+What has teeth is a **second location pass after the descriptions are fetched**,
+dropping any posting whose own text names a place. It can only live there,
+because it needs the description. Measured on 3 October:
+
+| Profile | Read | Kept | Clearing the floor | Kept | Dropped |
+|---|---|---|---|---|---|
+| Bob | 105 | 97 | 34 | 31 | 8 |
+| Jeff | 117 | 108 | 41 | 39 | 9 |
+| Edan, Robbie, Jonny | | unchanged | | unchanged | 0 |
+
+Jeff's nine are the ones his brief always said to drop and the pipeline never
+did: his rule has been that anything hybrid or on-site is a rule-out and never
+a maybe, and CommandLink sat in his qualifying list flagged remote while naming
+the 24 states it hires in, California absent.
+
+**Silence is kept, not dropped, and the reason is a number.** Of Bob's 105
+postings, 9 say remote in their own words, 8 name a place, and **88 say nothing
+at all**. Dropping the silent ones takes him from 31 roles clearing his floor to
+**3**, and loses ASAPP at $350,000 to $400,000, his best published band and
+standing recommendation. ASAPP's advert contains no location sentence
+whatsoever. So silence is named in the document instead of filtered, which is
+Bob's own instruction from the same morning.
 
 **Robbie is rewriting his own resume, as of 29 September.** Do not offer to do
 it for him; the 29 September document did, and he has taken it on. The problem

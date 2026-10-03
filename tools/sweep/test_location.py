@@ -15,6 +15,7 @@ reproduce them.
 
 import unittest
 
+import run
 from run import location_evidence as ev
 
 
@@ -137,3 +138,55 @@ class Disclaimers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RemoteOnlyDropsAPlace(unittest.TestCase):
+    """The second location pass, added 3 October 2026 when Bob moved his own
+    search to remote only.
+
+    Flipping the profile setting alone changed nothing. Every LinkedIn row
+    arrives from a search run against "United States", so from_remote_search is
+    true for all of them and loc_ok admitted the lot. The posting's own words
+    are the only filter with any teeth, which is why the drop happens after the
+    descriptions are fetched rather than in loc_ok.
+    """
+
+    def test_both_remote_only_profiles_are_configured(self):
+        for key in ("bob", "jeff"):
+            self.assertIn("remote-only", run.PROFILES[key]["locations"], key)
+
+    def test_the_other_three_keep_any_us_location(self):
+        """Edan, Robbie and Jonny are unaffected, and the measured drop for
+        them on 3 October was zero."""
+        for key in ("edan", "robbie", "jonny"):
+            self.assertNotIn("remote-only", run.PROFILES[key]["locations"], key)
+
+    def test_a_posting_naming_a_place_is_what_gets_dropped(self):
+        """The rule in one line: evidence of a place is the only thing the pass
+        removes. Nine of Jeff's roles went on 3 October, CommandLink among
+        them, and eight of Bob's."""
+        self.assertEqual(ev("Must be willing to operate fully on-site in the "
+                            "Houston, TX office."), "place")
+        self.assertEqual(ev("PayPal's balanced hybrid work model offers 3 days "
+                            "in the office."), "place")
+
+    def test_silence_is_kept_not_dropped(self):
+        """Deliberate, and the reason is a number. Dropping silent postings
+        takes Bob from 31 roles clearing his floor to 3, and loses ASAPP at
+        $350,000 to $400,000, his best published band and standing
+        recommendation. ASAPP's advert contains no location sentence at all.
+        Silence gets called out in the document instead.
+        """
+        asapp_shaped = ("ASAPP is looking for a Chief Product Officer to own "
+                        "strategy and roadmap. 15+ years of experience.")
+        self.assertEqual(ev(asapp_shaped), "silent")
+
+    def test_a_stated_remote_role_survives(self):
+        self.assertEqual(ev("This is a fully remote position."), "remote")
+
+    def test_a_conflicted_posting_survives_for_the_reader_to_judge(self):
+        """Only "place" is dropped. A posting saying both is kept and named,
+        because picking a side would invent a decision the employer has not
+        made."""
+        self.assertEqual(ev("We highly value having employees working in-office. "
+                            "We are a remote first company."), "conflict")

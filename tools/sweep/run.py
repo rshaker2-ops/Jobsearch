@@ -415,6 +415,40 @@ def _score(key, p, rows, stats, outdir):
             print(f"  read {i}/{len(rows)}", file=sys.stderr, flush=True)
     stats["read"] = len(out)
 
+    # Second location pass, this one against the posting's own text rather than
+    # the location string. It can only run here, because it needs the
+    # description the loop above just fetched.
+    #
+    # Added 3 October 2026, when Bob moved his own search to remote only and
+    # flipping the setting changed nothing: every LinkedIn row arrives from a
+    # search run against "United States", so from_remote_search is true for all
+    # of them and loc_ok admitted the lot. The posting's own words are the only
+    # filter with any teeth.
+    #
+    # It is also Jeff's stated rule finally enforced rather than described. His
+    # brief has always been that anything hybrid or on-site is a rule-out and
+    # never a maybe, and nine roles in his list were flagged remote while their
+    # postings named a city or a number of days a week. CommandLink was one; it
+    # listed the 24 states it hires in and California was not among them.
+    #
+    # "silent" is deliberately kept rather than dropped. Dropping it takes Bob
+    # from 31 roles clearing his floor to 3 and loses ASAPP, his best published
+    # band. Silence gets called out in the document instead, which is Bob's
+    # instruction from the same morning.
+    if "remote-only" in p["locations"]:
+        kept, dropped = [], []
+        for r in out:
+            (dropped if r["location_evidence"] == "place" else kept).append(r)
+        stats["location_dropped_place"] = len(dropped)
+        # Keep enough of each to write it up. An exclusion the candidate cannot
+        # check is one they cannot overrule, which is the 29 September lesson.
+        stats["location_dropped_place_roles"] = [
+            {"company": r.get("company"), "title": r["title"], "url": r.get("url"),
+             "loc": r.get("loc"), "band_low": r.get("band_low"),
+             "band_high": r.get("band_high")}
+            for r in dropped]
+        out = kept
+
     if p.get("industry_block"):
         IND = re.compile(p["industry_block"], re.I)
         kept, dropped = [], []
