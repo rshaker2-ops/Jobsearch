@@ -84,6 +84,80 @@ def bands(text):
     return sorted(set(out))
 
 
+# What the posting itself says about where the work happens, as opposed to what
+# the search flag claims. Added 3 October 2026 on Bob's instruction: keep
+# trusting from_remote_search, but say out loud when a posting never addresses
+# location, because that silence is where the bad ones hide.
+#
+# Every alternative below was copied from a posting that actually arrived in a
+# sweep, not invented. The runbook's rule about patterns written against real
+# text applies here more than anywhere, because a regex guessing at this would
+# quietly mislabel a quarter of Jeff's list.
+SAYS_REMOTE = re.compile(
+    r"remote[- ]first"                     # Chainguard, Secureframe
+    r"|remote[- ]flexible"                 # Blackbaud, in its benefits list
+    r"|fully remote"                       # Paylocity
+    r"|mix of remote"                      # Madison Logic
+    r"|(?:is|as)\s+a\s+remote\s+(?:opportunity|position|role)"   # 1Password
+    r"|remote\s+(?:opportunity|position|role)\s+within"           # 1Password
+    r"|work\s+(?:remotely|from\s+home)"  # Chainguard, Paylocity
+    r"|100%\s+remote"
+    r"|no\s+in-?office\s+requirement",   # Paylocity
+    re.I)
+SAYS_PLACE = re.compile(
+    r"fully\s+on-?site"                    # abbott
+    r"|operate\s+fully\s+on-?site"        # GS2
+    r"|working\s+in-?office"               # Rippling, Secureframe
+    r"|in-?office\s+expectation"           # Docusign
+    r"|\d+\s+days?\s+(?:a|per)\s+week"   # Docusign, PayPal
+    r"|\d+\s+days?\s+in\s+the\s+office" # PayPal
+    r"|hybrid\s+work\s+is\s+required"     # Madison Logic
+    r"|position\s+is\s+hybrid"             # Illumia
+    r"|hybrid\s+work\s+model"              # PayPal
+    r"|100%\s+onsite",                      # Fidelity
+    re.I)
+
+# A sentence that mentions remote work only to say it is somebody else's.
+# Fidelity's posting reads "This transition does not apply to fully remote
+# roles", which is boilerplate about the rest of the company and not a claim
+# about the advertised job. Without this the classifier called Fidelity a
+# conflict and put a remote possibility in front of a reader who had none.
+DISCLAIMS = re.compile(r"does not apply to|is not eligible|other than|except for", re.I)
+SENTENCE = re.compile(r"[^.!?]+[.!?]|[^.!?]+$")
+
+
+def location_evidence(desc):
+    """One of "remote", "place", "conflict" or "silent".
+
+    "place" rather than "onsite" because hybrid and a three-day week are the
+    same answer to Jeff: the job has a location he cannot reach.
+
+    "conflict" is real and not a parser artefact. Secureframe's advert says it
+    highly values having employees working in-office and, four lines later,
+    calls itself a remote first company. Madison Logic offers a mix of remote
+    and hybrid working and then requires hybrid of anyone local. A classifier
+    that picked a side would be inventing a decision the employer has not made.
+
+    Read sentence by sentence so a remote phrase can be discounted when its own
+    sentence disclaims it. The output is a prompt to go and read the posting,
+    never a verdict to quote.
+    """
+    desc = desc or ""
+    remote = place = False
+    for sentence in SENTENCE.findall(desc):
+        if SAYS_PLACE.search(sentence):
+            place = True
+        if SAYS_REMOTE.search(sentence) and not DISCLAIMS.search(sentence):
+            remote = True
+    if remote and place:
+        return "conflict"
+    if remote:
+        return "remote"
+    if place:
+        return "place"
+    return "silent"
+
+
 def loc_ok(loc, p, ats, from_remote_search=False):
     loc = (loc or "").strip()
 
@@ -334,6 +408,7 @@ def _score(key, p, rows, stats, outdir):
                  band_high=money[-1] if money else None,
                  clears_floor=(money[-1] >= p["floor"]) if money else None,
                  hard_gate=bool(HARD.search(desc)),
+                 location_evidence=location_evidence(desc),
                  fit=len({x.lower() for x in FIT.findall(desc)}))
         out.append(r)
         if i % 20 == 0:
@@ -362,6 +437,20 @@ def _score(key, p, rows, stats, outdir):
     stats["publish_a_band"] = sum(1 for r in out if r["money"])
     stats["clear_floor"] = sum(1 for r in out if r["clears_floor"])
     stats["hard_gated"] = sum(1 for r in out if r["hard_gate"])
+
+    # Location evidence, counted so the document has to account for it. The
+    # silent bucket is the one Bob asked to have called out: a posting that
+    # never addresses where the work happens has told you nothing, and the
+    # search flag saying remote is not the posting agreeing.
+    for bucket in ("remote", "place", "conflict", "silent"):
+        stats[f"location_{bucket}"] = sum(
+            1 for r in out if r["location_evidence"] == bucket)
+    stats["location_silent_new"] = sum(
+        1 for r in out if r["location_evidence"] == "silent" and r.get("is_new"))
+    stats["location_silent_new_roles"] = [
+        {"company": r.get("company"), "title": r["title"], "url": r.get("url"),
+         "loc": r.get("loc"), "from_remote_search": r.get("from_remote_search")}
+        for r in out if r["location_evidence"] == "silent" and r.get("is_new")]
 
     out.sort(key=lambda x: (0 if x["clears_floor"] else (1 if x["clears_floor"] is None else 2),
                             x["hard_gate"], -x["fit"], -(x["band_high"] or 0)))

@@ -164,11 +164,56 @@ never used the word remote anywhere in their text**. Two it waved through said
 the opposite. CommandLink listed the 24 states it hires in and California was
 not among them. Monstro reads as remote and is four days a week in New York.
 
-It is still trusted, because dropping it costs Jeff most of his list and the
-flag is right more often than not. Two things follow. Read the posting's own
-words on location for anything the document recommends, and say so when they
-are silent, which on 3 October was three of Jeff's eight new roles. And never
-write that a role is remote because the flag says so.
+**Bob's decision, 3 October: keep the flag, call out the silent postings.**
+Dropping it would cost Jeff most of his list, so it stays, and the silence gets
+named instead of filtered.
+
+`location_evidence()` in run.py classifies what each posting says in its own
+text, into one of four buckets, and `run.py` counts them into `stats` so a
+document cannot quietly skip them:
+
+| Bucket | Means |
+|---|---|
+| `remote` | the posting says remote, remote-first, remote-flexible, fully remote |
+| `place` | it says on-site, in-office, hybrid, or a number of days a week |
+| `conflict` | it says both and means it |
+| `silent` | it never addresses location at all |
+
+`place` rather than `onsite` because hybrid and a three-day week are the same
+answer to Jeff: a location he cannot reach. `conflict` is real rather than a
+parser artefact: Secureframe values employees working in-office and calls
+itself a remote first company four lines later, and Madison Logic offers a mix
+of remote and hybrid then requires hybrid of anyone local.
+
+Measured across Jeff's 117 postings on 3 October:
+
+| What the posting says | Count |
+|---|---|
+| remote, in its own words | 14 |
+| a place | 9 |
+| both | 3 |
+| nothing at all | 91 |
+
+Those 9 are the CommandLink shape: the search flag called them remote and the
+posting names a city or a number of days. They sit in his qualifying list and
+the flag is what put them there.
+
+Run it before writing anything, alongside the duplicate collapse:
+
+    python3 tools/sweep/dedupe.py <sweep dir> --floor-only
+    python3 tools/sweep/location_report.py <sweep dir> --new-only
+
+The report prints the counts and then lists, by name, every role the search
+called remote while the posting says a place, plus every conflict. Read those
+first. **Say in the document how many of the new roles never address location**,
+and never write that a role is remote because the flag said so.
+
+Two things the classifier is not. It is not a filter, so nothing is dropped on
+its say-so. And its output is a prompt to go and read the posting rather than a
+verdict to quote: the patterns are written against text that really arrived in
+a sweep, and the one time a guess crept in it called Fidelity a conflict
+because "this transition does not apply to fully remote roles" mentions remote
+work while talking about other people's jobs.
 
 **Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
 location, remote or on-site, so say where a role actually sits rather than
