@@ -410,6 +410,61 @@ A market claim needs a count, a cross-tabulation, or both. Two well-chosen
 examples will make any pattern you like, which is exactly why they are not
 evidence of one.
 
+### Count jobs, not postings
+
+`tools/sweep/dedupe.py`, run as `python3 tools/sweep/dedupe.py <sweep dir>
+--floor-only`. Quote the distinct figure it prints and nothing else.
+
+On 3 October Bob's document would have said 34 roles clear his floor. Three
+pairs in those 34 were one job advertised twice, so the honest figure was 31.
+The day before, the same three pairs were in his list and the document said 31
+when the truth was 28, and two of those three pairs were already written down
+in the section above as known. Knowing about a duplicate does not subtract it
+from a count.
+
+Three shapes, all now seen in real data:
+
+| Shape | Example |
+|---|---|
+| a rename | Trinity Life Sciences became Trinity Partners |
+| a parent and its subsidiary | TKO and On Location; Dassault Systemes and Medidata |
+| an agency beside its client | Clearbrook posting Argo's Omaha role, byte-identical |
+
+The third is the most common and the easiest to miss, because the two company
+names have no visible relationship at all.
+
+The test is not the company name. Two rows are one job when they share a title
+**and** a published band **and** their descriptions agree above 0.80. The band
+requirement is load bearing: "Chief Technology Officer" with no band appears
+across sixteen real employers in Bob's list, and merging those would be a worse
+error than the miscount. Nothing sits near the threshold, so it is not a tuned
+number: the true pairs score 1.00, 0.90 and 0.90, and the pairs that share a
+title and a round band while being genuinely different score 0.04 and 0.03.
+
+When the evidence is short of proof, say so rather than merging quietly.
+Purple Squirrel and Impruvon carried the same title, the same band to the
+dollar and the same location, and Purple Squirrel's own text says applications
+sent directly to its client are redirected back to it. Almost certainly one
+job, not provably so, so Jonny's document said exactly that and the count left
+them separate.
+
+### Read bands from the resolved table, never from memory
+
+Resolve every role once into a table keyed by URL, carrying its URL, its
+formatted band and its location, then build the document and the email from
+that table. On 3 October five bands typed straight into the specs were wrong,
+including Monstro at $336,000 to $399,000 and Squarespace at $108,000, both
+written as "not published". Squarespace was Robbie's first recommendation and
+its published figure is $13,500 above his floor, so "not published" was not a
+cosmetic slip. The previous day's documents had all five right, which is the
+tell: the error arrives when a second document is written from memory of the
+first instead of from the data.
+
+A flat band needs collapsing in the formatter, or a role paying one figure
+renders as "$130,000 - $130,000". And when a correction changes a band, reread
+the prose around it: fixing the Monstro cell left a sentence saying "No band,
+so same first question as Harris Allied" two lines below the band.
+
 ### Never estimate a band, and never trust the parsed one
 
 The rule has always been to quote only what the posting says and to write "not
@@ -478,9 +533,25 @@ and across a hundred-odd bands those differences form a set dense enough to
 excuse almost any round number. The invented $95,000 is $185,000 minus a $90,000
 floor. Deltas are now restricted to operands that appear on the page.
 
-Run it every day, after the build and before the queue. `tools/test_check_figures.py`
-pins the behaviour, including the weaknesses above, so the limits are executable
-rather than remembered.
+Midpoints count, but only of one posting's own band. "The middle of this range
+is $96,500" about a published $85,000 to $108,000 is arithmetic a document
+legitimately does, and the delta rule had no room for it. The first attempt
+allowed the midpoint of any two permitted figures and that quietly defeated the
+whole check: the invented $115,000 from the Doppel error is exactly halfway
+between a $90,000 floor and a $140,000 band top. A test now pins that
+coincidence so the rule cannot drift back.
+
+Second-order arithmetic is where to stop extending the script and fix the
+sentence instead. Robbie's email said a band midpoint was "$2,000 clear"
+without his floor on the page; rather than teach the check about differences of
+midpoints, the sentence now gives both numbers. If a figure is hard to trace
+mechanically, it is usually hard for the reader to check too, which is the
+better reason to rewrite it.
+
+Run it every day, after the build and before the queue, against the documents
+**and** the email bodies. `tools/test_check_figures.py` pins the behaviour,
+including the weaknesses above, so the limits are executable rather than
+remembered.
 
 ### Bob's figures, canonical, confirmed 1 October
 
