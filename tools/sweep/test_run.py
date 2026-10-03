@@ -323,6 +323,22 @@ class ExclusionTestCase(unittest.TestCase):
         self.assertIn("IDIQ", b["company_block"])
         self.assertTrue(b["industry_block"])
 
+    def test_monstro_is_blocked(self):
+        """Added 3 October on Bob's instruction: the Monstro Chief Product
+        Officer seat is four days a week in New York.
+
+        Worth pinning because nothing in the posting says so. Its text gives
+        only "New York, NY" and a New York City band, and the sweep had it
+        flagged as coming from a remote-filtered search, so no amount of
+        reading the advert would have produced this. It is Bob's own knowledge
+        and the only place it can live is the profile.
+
+        If Monstro ever advertises something remote, this block is the thing
+        to revisit: the rule-out is the attendance requirement, not the
+        company.
+        """
+        self.assertIn("Monstro", run.PROFILES["bob"]["company_block"])
+
     def test_the_industry_pattern_catches_a_real_posting(self):
         # Every one of these came out of FanDuel's own posting text on
         # 29 September. The company name alone would never have caught it.

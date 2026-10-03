@@ -84,7 +84,7 @@ def bands(text):
     return sorted(set(out))
 
 
-def loc_ok(loc, p, ats, remote_confirmed=False):
+def loc_ok(loc, p, ats, from_remote_search=False):
     loc = (loc or "").strip()
 
     # remote-only means exactly that. Jeff is in Humboldt County, which has no
@@ -94,9 +94,24 @@ def loc_ok(loc, p, ats, remote_confirmed=False):
     if "remote-only" in p["locations"]:
         if NON_US.search(loc) and not US_SIGNAL.search(loc):
             return False
-        if remote_confirmed:
-            # The search itself was filtered to remote, so the city in the
-            # location string is the employer's address, not a commute.
+        if from_remote_search:
+            # The search was filtered to remote, so the city in the location
+            # string is usually the employer's address rather than a commute.
+            #
+            # "Usually" is doing a lot of work and the flag is weaker evidence
+            # than its old name (remote_confirmed) claimed. It records only that
+            # the row came back from a search with f_WT set; it is not the
+            # posting agreeing. On 3 October 2026, 69 of the 113 rows this flag
+            # admitted to Jeff's list never used the word remote anywhere in
+            # their text, and two postings it waved through said the opposite:
+            # CommandLink listed the 24 states it hires in and California was
+            # not among them, and Monstro reads as remote here while Bob knows
+            # it is four days a week in New York.
+            #
+            # Still trusted, because dropping it costs Jeff most of his list
+            # and LinkedIn's flag is right more often than not. But it is a
+            # hint, so the document must read the posting's own words on
+            # location for anything it recommends, and say when they are silent.
             return bool(US_SIGNAL.search(loc)) or not loc
         return bool(REMOTEISH.search(loc))
 
@@ -193,7 +208,9 @@ def _gather(p, key):
                 # location string: a remote role still reads "Austin, TX". Without
                 # recording the flag, a remote-only profile throws away everything
                 # LinkedIn already confirmed was remote.
-                x["remote_confirmed"] = is_remote_search
+                # Named for what it is: this row came from a remote-filtered
+                # search. Not a confirmation by the posting. See loc_ok.
+                x["from_remote_search"] = is_remote_search
             rows += r
             print(f"  li [{q[:38]:38s}] {loc[:22]:22s} -> {len(r):3d}", file=sys.stderr, flush=True)
 
@@ -260,7 +277,7 @@ def _score(key, p, rows, stats, outdir):
     # ---- location and seniority ------------------------------------------
     rows = [
         r for r in rows
-        if loc_ok(r.get("loc"), p, r.get("ats"), r.get("remote_confirmed", False))
+        if loc_ok(r.get("loc"), p, r.get("ats"), r.get("from_remote_search", False))
     ]
     if p.get("drop_seniority"):
         rows = [r for r in rows if not SENIOR.search(r["title"])]

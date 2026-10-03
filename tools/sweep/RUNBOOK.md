@@ -140,6 +140,36 @@ sports betting, iGaming, casino, wagering, responsible gaming) rather than
 guessed, and it is tested against ordinary postings so that a line like "we are
 betting on a new architecture" does not trip it.
 
+**Monstro is blocked for Bob, as of 3 October.** The Chief Product Officer
+seat is four days a week in New York. Nothing in the posting says so: its text
+gives only "New York, NY" and a New York City band of $336,000 to $399,000, and
+the sweep had it flagged as arriving from a remote-filtered search, so no amount
+of reading the advert would have produced this. It is Bob's own knowledge, and
+the profile is the only place it can live. The rule-out is the attendance
+requirement rather than the company, so if Monstro ever advertises something
+remote the block is the thing to revisit.
+
+It had already gone out in the 3 October email as the second-best published
+band on his list, which is the cost of an attendance requirement that exists
+nowhere in the text.
+
+**The remote flag is a hint, not a confirmation.** `from_remote_search`, called
+`remote_confirmed` until 3 October, records only that a row came back from a
+LinkedIn search with `f_WT` set. The old name claimed something the field never
+had, and `loc_ok()` uses it to admit roles that would otherwise fail a
+remote-only location filter.
+
+Measured on 3 October: of the 113 rows the flag admitted to Jeff's list, **69
+never used the word remote anywhere in their text**. Two it waved through said
+the opposite. CommandLink listed the 24 states it hires in and California was
+not among them. Monstro reads as remote and is four days a week in New York.
+
+It is still trusted, because dropping it costs Jeff most of his list and the
+flag is right more often than not. Two things follow. Read the posting's own
+words on location for anything the document recommends, and say so when they
+are silent, which on 3 October was three of Jeff's eight new roles. And never
+write that a role is remote because the flag says so.
+
 **Location rules, as of 22 Sep.** Bob, Edan and Robbie keep any United States
 location, remote or on-site, so say where a role actually sits rather than
 assuming remote. Boston and Rhode Island stay prioritised for Edan and Robbie.

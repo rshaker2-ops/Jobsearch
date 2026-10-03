@@ -32,7 +32,8 @@
   "fit_signal": "\\b(product strategy|roadmap|org design|hiring and developing|p&l|go[- ]to[- ]market|product operating model|cross[- ]functional leadership|board)\\b",
   "drop_seniority": false,
   "company_block": [
-   "IDIQ"
+   "IDIQ",
+   "Monstro"
   ],
   "industry_block": "\\b(sportsbook|sports ?betting|i-?gaming|igaming|casino|gambling|wagering|responsible gaming)\\b"
  },
