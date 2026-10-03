@@ -142,7 +142,31 @@ def check(text, links, rows, floor):
         if v
     } | near
 
-    near_deltas = {abs(a - b) for a in near for b in near}
+    def midpoints(rows_in_scope):
+        """The middle of one posting's own band, and nothing else.
+
+        "The middle of this range is $96,500" about a band of $85,000 to
+        $108,000 is a figure a document legitimately computes, and the delta
+        rule had no room for it. But allowing the midpoint of any two allowed
+        figures is far too generous: the invented $115,000 from the Doppel
+        error is exactly halfway between a $90,000 floor and a $140,000 band
+        top, so a first version of this rule waved through the error the whole
+        script exists to catch. A midpoint only counts when both halves are
+        the two ends of a single published band.
+
+        Halves are rounded the way a document writes them, so an odd span
+        yields both neighbours rather than neither.
+        """
+        out = set()
+        for r in rows_in_scope:
+            lo, hi = r.get("band_low"), r.get("band_high")
+            if lo and hi and lo != hi:
+                out.add((int(lo) + int(hi)) // 2)
+                out.add(-(-(int(lo) + int(hi)) // 2))
+        return out
+
+    near_deltas = ({abs(a - b) for a in near for b in near}
+                   | midpoints([rows[u] for u in linked]))
 
     # Deltas over the wide set are restricted to operands that appear in this
     # document, and the restriction is load bearing. Unrestricted, the pairwise
@@ -155,7 +179,8 @@ def check(text, links, rows, floor):
     # $43,000". An invented figure has no operands anywhere near it.
     on_page = figures_in(text)
     wide_operands = (wide & on_page) | {floor}
-    wide_deltas = {abs(a - b) for a in wide_operands for b in wide_operands}
+    wide_deltas = ({abs(a - b) for a in wide_operands for b in wide_operands}
+                   | midpoints(rows.values()))
 
     traced, review, untraced = [], [], []
     for raw in sorted(figures_in(text)):

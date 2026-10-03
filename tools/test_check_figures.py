@@ -146,3 +146,47 @@ class StatedLimits(unittest.TestCase):
 
         _, _, _, bad = run("the $43,000 between the two medians", rows=rows)
         self.assertEqual(bad, [43000])
+
+
+class Midpoints(unittest.TestCase):
+    """Added 3 October. The check failed "the middle of this range is $96,500"
+    about a published band of $85,000 to $108,000, which is correct arithmetic
+    the delta rule had no room for."""
+
+    def test_the_midpoint_of_a_linked_band_traces(self):
+        band = {"url": "https://example.test/fwd",
+                "desc": "GRC Analyst. 1-2+ years of experience.",
+                "band_low": 85000, "band_high": 108000}
+        _, traced, _, bad = run("the middle of this range is $96,500",
+                                links=[band["url"]], rows={band["url"]: band})
+        self.assertIn(96500, traced)
+        self.assertEqual(bad, [])
+
+    def test_the_doppel_coincidence_is_not_a_midpoint(self):
+        """Why the rule is one band's own endpoints and not any two figures.
+        The invented $115,000 is exactly halfway between the $90,000 floor and
+        Doppel's $140,000 band top. A first version of the midpoint rule let it
+        through, which would have defeated the whole check."""
+        _, traced, _, bad = run("could be anywhere from $95,000 to $115,000")
+        self.assertNotIn(115000, traced)
+        self.assertIn(115000, bad)
+
+    def test_an_odd_span_gives_both_neighbours(self):
+        """$85,000 to $108,000 halves to 96,500 exactly, but $85,000 to
+        $108,001 does not. A document rounding either way must still pass."""
+        band = {"url": "https://example.test/odd", "desc": "",
+                "band_low": 85000, "band_high": 108001}
+        rows = {band["url"]: band}
+        for written in (96500, 96501):
+            _, traced, _, bad = run(f"midpoint ${written:,}",
+                                    links=[band["url"]], rows=rows)
+            self.assertIn(written, traced, f"${written:,} should trace")
+            self.assertEqual(bad, [])
+
+    def test_a_midpoint_still_needs_its_operands_in_scope(self):
+        """The restriction that keeps this from excusing anything: a midpoint of
+        two figures belonging to a role the document does not link is review at
+        best, never traced."""
+        _, traced, review, bad = run("I guessed $47,500")
+        self.assertEqual(traced, [])
+        self.assertEqual(bad, [47500])

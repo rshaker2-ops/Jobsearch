@@ -38,6 +38,15 @@ jobs:
           python3 -m pip install --quiet pyyaml
           python3 -m unittest tools.mail.test_workflow_gate -v
 
+      - name: Duplicate posting collapse tests
+        # tools/sweep/dedupe.py collapses one job advertised twice: a renamed
+        # company, a parent and its subsidiary, or an agency beside its client.
+        # Added 3 October after Bob's qualifying set was reported as 31 when 3
+        # of the 31 were duplicates and the honest figure was 28. The near-miss
+        # cases matter as much: merging sixteen unrelated Chief Technology
+        # Officer postings would be worse than the miscount.
+        run: python3 -m unittest discover -s tools/sweep -p "test_dedupe.py" -t tools/sweep -v
+
       - name: Figure tracing check tests
         # tools/check_figures.py traces every dollar figure in a built document
         # back to posting text, a parsed band, a floor, or arithmetic on those.
