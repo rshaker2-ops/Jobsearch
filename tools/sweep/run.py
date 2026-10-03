@@ -84,7 +84,81 @@ def bands(text):
     return sorted(set(out))
 
 
-def loc_ok(loc, p, ats, remote_confirmed=False):
+# What the posting itself says about where the work happens, as opposed to what
+# the search flag claims. Added 3 October 2026 on Bob's instruction: keep
+# trusting from_remote_search, but say out loud when a posting never addresses
+# location, because that silence is where the bad ones hide.
+#
+# Every alternative below was copied from a posting that actually arrived in a
+# sweep, not invented. The runbook's rule about patterns written against real
+# text applies here more than anywhere, because a regex guessing at this would
+# quietly mislabel a quarter of Jeff's list.
+SAYS_REMOTE = re.compile(
+    r"remote[- ]first"                     # Chainguard, Secureframe
+    r"|remote[- ]flexible"                 # Blackbaud, in its benefits list
+    r"|fully remote"                       # Paylocity
+    r"|mix of remote"                      # Madison Logic
+    r"|(?:is|as)\s+a\s+remote\s+(?:opportunity|position|role)"   # 1Password
+    r"|remote\s+(?:opportunity|position|role)\s+within"           # 1Password
+    r"|work\s+(?:remotely|from\s+home)"  # Chainguard, Paylocity
+    r"|100%\s+remote"
+    r"|no\s+in-?office\s+requirement",   # Paylocity
+    re.I)
+SAYS_PLACE = re.compile(
+    r"fully\s+on-?site"                    # abbott
+    r"|operate\s+fully\s+on-?site"        # GS2
+    r"|working\s+in-?office"               # Rippling, Secureframe
+    r"|in-?office\s+expectation"           # Docusign
+    r"|\d+\s+days?\s+(?:a|per)\s+week"   # Docusign, PayPal
+    r"|\d+\s+days?\s+in\s+the\s+office" # PayPal
+    r"|hybrid\s+work\s+is\s+required"     # Madison Logic
+    r"|position\s+is\s+hybrid"             # Illumia
+    r"|hybrid\s+work\s+model"              # PayPal
+    r"|100%\s+onsite",                      # Fidelity
+    re.I)
+
+# A sentence that mentions remote work only to say it is somebody else's.
+# Fidelity's posting reads "This transition does not apply to fully remote
+# roles", which is boilerplate about the rest of the company and not a claim
+# about the advertised job. Without this the classifier called Fidelity a
+# conflict and put a remote possibility in front of a reader who had none.
+DISCLAIMS = re.compile(r"does not apply to|is not eligible|other than|except for", re.I)
+SENTENCE = re.compile(r"[^.!?]+[.!?]|[^.!?]+$")
+
+
+def location_evidence(desc):
+    """One of "remote", "place", "conflict" or "silent".
+
+    "place" rather than "onsite" because hybrid and a three-day week are the
+    same answer to Jeff: the job has a location he cannot reach.
+
+    "conflict" is real and not a parser artefact. Secureframe's advert says it
+    highly values having employees working in-office and, four lines later,
+    calls itself a remote first company. Madison Logic offers a mix of remote
+    and hybrid working and then requires hybrid of anyone local. A classifier
+    that picked a side would be inventing a decision the employer has not made.
+
+    Read sentence by sentence so a remote phrase can be discounted when its own
+    sentence disclaims it. The output is a prompt to go and read the posting,
+    never a verdict to quote.
+    """
+    desc = desc or ""
+    remote = place = False
+    for sentence in SENTENCE.findall(desc):
+        if SAYS_PLACE.search(sentence):
+            place = True
+        if SAYS_REMOTE.search(sentence) and not DISCLAIMS.search(sentence):
+            remote = True
+    if remote and place:
+        return "conflict"
+    if remote:
+        return "remote"
+    if place:
+        return "place"
+    return "silent"
+
+
+def loc_ok(loc, p, ats, from_remote_search=False):
     loc = (loc or "").strip()
 
     # remote-only means exactly that. Jeff is in Humboldt County, which has no
@@ -94,9 +168,24 @@ def loc_ok(loc, p, ats, remote_confirmed=False):
     if "remote-only" in p["locations"]:
         if NON_US.search(loc) and not US_SIGNAL.search(loc):
             return False
-        if remote_confirmed:
-            # The search itself was filtered to remote, so the city in the
-            # location string is the employer's address, not a commute.
+        if from_remote_search:
+            # The search was filtered to remote, so the city in the location
+            # string is usually the employer's address rather than a commute.
+            #
+            # "Usually" is doing a lot of work and the flag is weaker evidence
+            # than its old name (remote_confirmed) claimed. It records only that
+            # the row came back from a search with f_WT set; it is not the
+            # posting agreeing. On 3 October 2026, 69 of the 113 rows this flag
+            # admitted to Jeff's list never used the word remote anywhere in
+            # their text, and two postings it waved through said the opposite:
+            # CommandLink listed the 24 states it hires in and California was
+            # not among them, and Monstro reads as remote here while Bob knows
+            # it is four days a week in New York.
+            #
+            # Still trusted, because dropping it costs Jeff most of his list
+            # and LinkedIn's flag is right more often than not. But it is a
+            # hint, so the document must read the posting's own words on
+            # location for anything it recommends, and say when they are silent.
             return bool(US_SIGNAL.search(loc)) or not loc
         return bool(REMOTEISH.search(loc))
 
@@ -193,7 +282,9 @@ def _gather(p, key):
                 # location string: a remote role still reads "Austin, TX". Without
                 # recording the flag, a remote-only profile throws away everything
                 # LinkedIn already confirmed was remote.
-                x["remote_confirmed"] = is_remote_search
+                # Named for what it is: this row came from a remote-filtered
+                # search. Not a confirmation by the posting. See loc_ok.
+                x["from_remote_search"] = is_remote_search
             rows += r
             print(f"  li [{q[:38]:38s}] {loc[:22]:22s} -> {len(r):3d}", file=sys.stderr, flush=True)
 
@@ -260,7 +351,7 @@ def _score(key, p, rows, stats, outdir):
     # ---- location and seniority ------------------------------------------
     rows = [
         r for r in rows
-        if loc_ok(r.get("loc"), p, r.get("ats"), r.get("remote_confirmed", False))
+        if loc_ok(r.get("loc"), p, r.get("ats"), r.get("from_remote_search", False))
     ]
     if p.get("drop_seniority"):
         rows = [r for r in rows if not SENIOR.search(r["title"])]
@@ -317,11 +408,46 @@ def _score(key, p, rows, stats, outdir):
                  band_high=money[-1] if money else None,
                  clears_floor=(money[-1] >= p["floor"]) if money else None,
                  hard_gate=bool(HARD.search(desc)),
+                 location_evidence=location_evidence(desc),
                  fit=len({x.lower() for x in FIT.findall(desc)}))
         out.append(r)
         if i % 20 == 0:
             print(f"  read {i}/{len(rows)}", file=sys.stderr, flush=True)
     stats["read"] = len(out)
+
+    # Second location pass, this one against the posting's own text rather than
+    # the location string. It can only run here, because it needs the
+    # description the loop above just fetched.
+    #
+    # Added 3 October 2026, when Bob moved his own search to remote only and
+    # flipping the setting changed nothing: every LinkedIn row arrives from a
+    # search run against "United States", so from_remote_search is true for all
+    # of them and loc_ok admitted the lot. The posting's own words are the only
+    # filter with any teeth.
+    #
+    # It is also Jeff's stated rule finally enforced rather than described. His
+    # brief has always been that anything hybrid or on-site is a rule-out and
+    # never a maybe, and nine roles in his list were flagged remote while their
+    # postings named a city or a number of days a week. CommandLink was one; it
+    # listed the 24 states it hires in and California was not among them.
+    #
+    # "silent" is deliberately kept rather than dropped. Dropping it takes Bob
+    # from 31 roles clearing his floor to 3 and loses ASAPP, his best published
+    # band. Silence gets called out in the document instead, which is Bob's
+    # instruction from the same morning.
+    if "remote-only" in p["locations"]:
+        kept, dropped = [], []
+        for r in out:
+            (dropped if r["location_evidence"] == "place" else kept).append(r)
+        stats["location_dropped_place"] = len(dropped)
+        # Keep enough of each to write it up. An exclusion the candidate cannot
+        # check is one they cannot overrule, which is the 29 September lesson.
+        stats["location_dropped_place_roles"] = [
+            {"company": r.get("company"), "title": r["title"], "url": r.get("url"),
+             "loc": r.get("loc"), "band_low": r.get("band_low"),
+             "band_high": r.get("band_high")}
+            for r in dropped]
+        out = kept
 
     if p.get("industry_block"):
         IND = re.compile(p["industry_block"], re.I)
@@ -345,6 +471,20 @@ def _score(key, p, rows, stats, outdir):
     stats["publish_a_band"] = sum(1 for r in out if r["money"])
     stats["clear_floor"] = sum(1 for r in out if r["clears_floor"])
     stats["hard_gated"] = sum(1 for r in out if r["hard_gate"])
+
+    # Location evidence, counted so the document has to account for it. The
+    # silent bucket is the one Bob asked to have called out: a posting that
+    # never addresses where the work happens has told you nothing, and the
+    # search flag saying remote is not the posting agreeing.
+    for bucket in ("remote", "place", "conflict", "silent"):
+        stats[f"location_{bucket}"] = sum(
+            1 for r in out if r["location_evidence"] == bucket)
+    stats["location_silent_new"] = sum(
+        1 for r in out if r["location_evidence"] == "silent" and r.get("is_new"))
+    stats["location_silent_new_roles"] = [
+        {"company": r.get("company"), "title": r["title"], "url": r.get("url"),
+         "loc": r.get("loc"), "from_remote_search": r.get("from_remote_search")}
+        for r in out if r["location_evidence"] == "silent" and r.get("is_new")]
 
     out.sort(key=lambda x: (0 if x["clears_floor"] else (1 if x["clears_floor"] is None else 2),
                             x["hard_gate"], -x["fit"], -(x["band_high"] or 0)))

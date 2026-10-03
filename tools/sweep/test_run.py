@@ -114,15 +114,17 @@ class LocationTestCase(unittest.TestCase):
             "Remote Nationwide", "Remote Kentucky", "Remote Michigan",
             "United States - California - Alameda",
         ]:
-            self.assertTrue(run.loc_ok(loc, self.p("bob"), "workday"), loc)
+            self.assertTrue(run.loc_ok(loc, self.p("jonny"), "workday"), loc)
 
     def test_bare_city_and_state_is_kept(self):
         """The 235 dropped roles."""
         for loc in ["Austin, TX", "San Francisco, CA", "Boston, MA",
                     "Quincy, MA", "Medford, MA", "Addison, TX", "Alpharetta, GA"]:
-            self.assertTrue(run.loc_ok(loc, self.p("bob"), "linkedin"), loc)
+            self.assertTrue(run.loc_ok(loc, self.p("jonny"), "linkedin"), loc)
 
     def test_foreign_locations_are_rejected(self):
+        """Still uses Bob, and still passes after he went remote-only on
+        3 October: both branches reject a foreign location."""
         for loc in ["United Kingdom - Remote", "Remote, Mexico", "Remote Australia",
                     "Canada - Quebec - Remote", "Philippines - Remote",
                     "Saudi Arabia - Remote", "Bengaluru, India",
@@ -132,9 +134,25 @@ class LocationTestCase(unittest.TestCase):
     def test_a_us_state_beats_a_country_of_the_same_name(self):
         """Washington and Georgia are both states and countries-ish. States win."""
         for loc in ["Seattle, WA", "Remote Washington", "Atlanta, GA", "Remote Georgia"]:
-            self.assertTrue(run.loc_ok(loc, self.p("bob"), "linkedin"), loc)
+            self.assertTrue(run.loc_ok(loc, self.p("jonny"), "linkedin"), loc)
 
     # -- remote-only --------------------------------------------------------
+
+    def test_bob_is_remote_only_as_of_3_october(self):
+        """He asked for it that morning. The three us-any cases above moved to
+        Jonny because Bob had been their example and is no longer one.
+
+        Worth knowing what this setting alone does, which is almost nothing:
+        every LinkedIn row arrives from a search run against "United States",
+        so from_remote_search is true throughout and the flag branch admits any
+        US location. 105 postings in and 105 out on the day he switched. The
+        filter with teeth is the second pass in _score(), which drops a posting
+        whose own text names a place, and that needs the description so it
+        cannot live in loc_ok at all.
+        """
+        self.assertIn("remote-only", self.p("bob")["locations"])
+        self.assertTrue(run.loc_ok("Austin, TX", self.p("bob"), "linkedin", True))
+        self.assertFalse(run.loc_ok("Austin, TX", self.p("bob"), "linkedin", False))
 
     def test_remote_only_honours_the_search_flag(self):
         """The 6-of-191 bug. A remote-flagged search means the city is an address."""
@@ -322,6 +340,22 @@ class ExclusionTestCase(unittest.TestCase):
         b = run.PROFILES["bob"]
         self.assertIn("IDIQ", b["company_block"])
         self.assertTrue(b["industry_block"])
+
+    def test_monstro_is_blocked(self):
+        """Added 3 October on Bob's instruction: the Monstro Chief Product
+        Officer seat is four days a week in New York.
+
+        Worth pinning because nothing in the posting says so. Its text gives
+        only "New York, NY" and a New York City band, and the sweep had it
+        flagged as coming from a remote-filtered search, so no amount of
+        reading the advert would have produced this. It is Bob's own knowledge
+        and the only place it can live is the profile.
+
+        If Monstro ever advertises something remote, this block is the thing
+        to revisit: the rule-out is the attendance requirement, not the
+        company.
+        """
+        self.assertIn("Monstro", run.PROFILES["bob"]["company_block"])
 
     def test_the_industry_pattern_catches_a_real_posting(self):
         # Every one of these came out of FanDuel's own posting text on

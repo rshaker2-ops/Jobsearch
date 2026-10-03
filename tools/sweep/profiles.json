@@ -6,7 +6,7 @@
   "headline": "SVP and above  \u00b7  United States, remote or on-site  \u00b7  $275k base floor",
   "floor": 275000,
   "locations": [
-   "us-any"
+   "remote-only"
   ],
   "linkedin_queries": [
    "Chief Product Officer",
@@ -32,7 +32,8 @@
   "fit_signal": "\\b(product strategy|roadmap|org design|hiring and developing|p&l|go[- ]to[- ]market|product operating model|cross[- ]functional leadership|board)\\b",
   "drop_seniority": false,
   "company_block": [
-   "IDIQ"
+   "IDIQ",
+   "Monstro"
   ],
   "industry_block": "\\b(sportsbook|sports ?betting|i-?gaming|igaming|casino|gambling|wagering|responsible gaming)\\b"
  },
